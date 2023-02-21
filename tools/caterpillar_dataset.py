@@ -8,8 +8,6 @@ from torch_geometric.data import Dataset, Data
 import torch_geometric.transforms as T
 
 
-
-
 class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific file structure. Under 'root' there is 'raw' and 'processed'
     def __init__(self, root, stellar_category, feature_columns, position_columns, data_filter=None, repeat=10, label_column=None, transform=None, pre_transform=None, pre_filter=None):
         self.dataset_ids = sorted([1104787, 1130025, 1195075, 1195448, 1232164, 1268839, 1292085,\
@@ -72,7 +70,6 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
         data['y'][mask] = -1
         return data
 
-
     def sample_space(self, data, radius=0.01, radius_sun=0.0082, zsun_range=0.016/1000, filter_size=10):
         phi = np.random.uniform(0, np.pi*2)
         xsun = np.cos(phi)*radius_sun
@@ -84,6 +81,11 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
             small_data = self.filter_clusters(small_data, filter_size)
         return small_data
 
+    def add_connectivity(self, data):
+        row, col = data['edge_index']
+        data['edge_type'] = (data['y'][row] == data['y'][col]) & (data['y'][row] > -1)
+        return data
+
     def len(self):
         return len(self.processed_file_names)*self.repeat
 
@@ -91,6 +93,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
         if idx % self.repeat == 0:
             self.current_data = torch.load(os.path.join(self.processed_dir, f'processed_{idx//self.repeat}_{self.stellar_category}.pt'))
         data = self.sample_space(self.current_data, radius=0.01, radius_sun=0.0082, zsun_range=0.016/1000, filter_size=10)
+        data = self.add_connectivity(data)
         if self.transform is not None:
             data = self.transform(data)
         return data
