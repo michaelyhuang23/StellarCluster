@@ -1,13 +1,15 @@
 import torch
 from torch import nn
-import torch.transforms as F
-from gnn_layers import NodeConv, EdgeConv
+import torch.nn.functional as F
+
+import sys
+sys.path.append('..')
+from tools.gnn_layers import NodeConv, EdgeConv
 
 
 class GCNEdgeBased(nn.Module): # non-overlapping
-    def __init__(self, input_size, similar_weight=1, regularizer=0.1, device='cpu'):
+    def __init__(self, input_size, similar_weight=1, regularizer=0.1):
         super().__init__()
-        self.device = device
         self.input_size = input_size
         self.convN1 = NodeConv(input_size, input_size, 32)
         self.dropout1 = nn.Dropout(p=0.0)
@@ -32,11 +34,11 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         edge_attr = self.convE2(X, edge_index, edge_attr)
         edge_pred = self.classifier(edge_attr)
         edge_pred = torch.sigmoid(edge_pred)[:,0]
-        print(torch.mean(edge_pred).item(), torch.std(edge_pred).item())
+        #print(torch.mean(edge_pred).item(), torch.std(edge_pred).item())
         loss_regularze = -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25
-        print(loss_regularze.item())
-        
+        #print(loss_regularze.item())
+
         weights = torch.ones_like(data.edge_type).float()
         weights[edge_pred>0.5] *= self.similar_weight
-        loss = F.binary_cross_entropy(edge_pred, data.edge_type, weight=weights)
+        loss = F.binary_cross_entropy(edge_pred, data.edge_type.float(), weight=weights)
         return edge_pred, loss + loss_regularze * self.regularizer

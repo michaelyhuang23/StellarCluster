@@ -6,14 +6,18 @@ import numpy as np
 import torch
 from torch_geometric.data import Dataset, Data
 import torch_geometric.transforms as T
+import random
 
 
 class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific file structure. Under 'root' there is 'raw' and 'processed'
-    def __init__(self, root, stellar_category, feature_columns, position_columns, data_filter=None, repeat=10, label_column=None, transform=None, pre_transform=None, pre_filter=None):
-        self.dataset_ids = sorted([1104787, 1130025, 1195075, 1195448, 1232164, 1268839, 1292085,\
+    def __init__(self, root, stellar_category, feature_columns, position_columns, use_dataset_ids=None, data_filter=None, repeat=10, label_column=None, transform=None, pre_transform=None, pre_filter=None):
+        self.dataset_ids = [1104787, 1130025, 1195075, 1195448, 1232164, 1268839, 1292085,\
                     1354437, 1387186, 1422331, 1422429, 1599988, 1631506, 1631582, 1725139,\
                     1725272, 196589, 264569, 388476, 447649, 5320, 581141, 581180, 65777, 795802,\
-                    796175, 94638, 95289, 1079897, 1232423, 1599902, 196078])
+                    796175, 94638, 95289, 1079897, 1232423, 1599902, 196078]
+        if use_dataset_ids is not None:
+            self.dataset_ids = use_dataset_ids
+        random.shuffle(self.dataset_ids)
         self.stellar_category = stellar_category
         self.feature_columns = feature_columns
         if position_columns is None:
@@ -93,22 +97,9 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
         if idx % self.repeat == 0:
             self.current_data = torch.load(os.path.join(self.processed_dir, f'processed_{idx//self.repeat}_{self.stellar_category}.pt'))
         data = self.sample_space(self.current_data, radius=0.01, radius_sun=0.0082, zsun_range=0.016/1000, filter_size=10)
-        data = self.add_connectivity(data)
         if self.transform is not None:
             data = self.transform(data)
+        data = self.add_connectivity(data)
         return data
 
 
-def filterer(df):
-    return df.loc[df['redshiftstar']<2].copy()
-
-feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
-position_columns = ['xstar', 'ystar', 'zstar']
-dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, data_filter=filterer, label_column='cluster_id', transform=T.KNNGraph(k=100, force_undirected=True))
-dataset.shuffle()
-
-print(dataset[0])
-
-print(dataset[1])
-
-print(dataset[2])
