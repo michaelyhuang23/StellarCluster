@@ -1,10 +1,13 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
 
 import sys
 sys.path.append('..')
 from tools.gnn_layers import NodeConv, EdgeConv
+
+
 
 
 class GCNEdgeBased(nn.Module): # non-overlapping
@@ -42,3 +45,26 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         weights[edge_pred>0.5] *= self.similar_weight
         loss = F.binary_cross_entropy(edge_pred, data.edge_type.float(), weight=weights)
         return edge_pred, loss + loss_regularze * self.regularizer
+
+
+class GCNEdge2Cluster(nn.Module):
+    def __init__(self, input_size, num_cluster=30, regularizer=0.01):
+        super().__init__()
+        self.conv1 = GCNConv(input_size, 32)
+        self.dropout1 = nn.Dropout(p=0)
+        self.conv2 = GCNConv(32, num_cluster)
+        self.num_cluster = num_cluster
+        self.regularizer = regularizer
+
+    def forward(self, data, edge_pred):
+        X, edge_index = data.x, data.edge_index
+        X = F.relu(self.conv1(X, edge_index))
+        X = self.dropout1(X)
+        X = self.conv2(X, edge_index)
+        FX = F.softmax(X, dim=-1) # change to softmax if not doing overlapping clusters
+        FF = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
+        NFX = torch.log(1-FX**2)
+        pregularize = -torch.sum(torch.log(1.0001-torch.exp(torch.sum(NFX, dim=0))), dim=0)
+        loss = torch.mean((FF - edge_pred)**2) + self.regularizer * pregularize
+        return FX, loss
+

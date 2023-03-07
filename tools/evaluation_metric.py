@@ -38,9 +38,22 @@ class ClassificationAcc:
         self.recall = np.sum(self.TP_class) / np.sum(self.T_class)
         self.avg_precision = np.mean(self.precision_class)
         self.avg_recall = np.mean(self.recall_class)
+        self.accuracy = np.sum(self.count_matrix * np.identity(num_classes)) / len(self.preds)
+
+        self.results = {'precision': self.avg_precision, 'recall': self.avg_recall, 'count_matrix': self.count_matrix, 'accuracy': self.accuracy}
 
     def __call__(self):
-        return self.avg_precision, self.avg_recall
+        return self.results
+
+    @classmethod
+    def aggregate(cls, results_list):
+        f_results = {key:0 for key in results_list[0].keys()}
+        for results in results_list:
+            for key, value in results.items():
+                f_results[key] += value
+        f_results = {key:value/len(results_list) for key,value in f_results.items()}
+        return f_results
+
 
 class ClusterEvalIoU:
     def __init__(self, preds, labels, IoU_thres=0.5):

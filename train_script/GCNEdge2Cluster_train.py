@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tools.caterpillar_dataset import NormalCaterpillarDataset
 from tools.gnn_models import GCNEdgeBased
 from tools.evaluation_metric import *
+from tools.cluster_functions import *
 
 
 writer = SummaryWriter()
@@ -37,62 +38,12 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 EPOCH = 100
 
-GCNEdgeBased_model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device)
-GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_decay=1e-5)
-
-def train_one_batch(model, optim, data_batch, evaluate=False):
-	model.train()
-	optim.zero_grad()
-	pred, loss = model(data_batch)
-	loss.backward()
-	optim.step()
-	if evaluate:
-		classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
-		return loss.cpu().item(), classification_metric
-	return loss.cpu().item(), None
+GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model/99.pth')
 
 
-def evaluate_one_batch(model, data_batch):
-	model.eval()
-	pred, loss = model(data_batch)
-	classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
-	return loss.cpu().item(), classification_metric
-
-
-for epoch in range(EPOCH):
-	print('training begins...')
-	for i, data_batch in enumerate(train_loader):
-		evaluate_acc = (i%10)==0
-		loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch.to(device), evaluate=evaluate_acc)
-		print(loss)
-		if evaluate_acc:
-			print(acc())
-		writer.add_scalar('Train/Loss', loss, epoch*len(train_loader)+i)
-
-	print('evaluation begins...')
-	validation_accs = []
-	losses = []
-	for i, data_batch in enumerate(val_loader):
-		loss, acc = evaluate_one_batch(GCNEdgeBased_model, data_batch.to(device))
-		validation_accs.append(acc())
-		losses.append(loss)
-		if i%10 == 0:
-			print(loss)
-			print(acc())
-
-	validation_acc = ClassificationAcc.aggregate(validation_accs)
-	avg_loss = sum(losses)/len(losses)
-	print(avg_loss)
-	print(validation_acc)
-	writer.add_scalar('Val/Loss', avg_loss, epoch)
-	writer.add_scalar('Val/EdgeRecall', validation_acc['recall'], epoch)
-	writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
-
-	torch.save(GCNEdgeBased_model, f'GCNEdgeBased_model/{epoch}.pth')
-
-
-
-
-
-
+for i, data_batch in enumerate(val_loader):
+	with torch.no_grad():
+		GCNEdgeBased_model.eval()
+		edge_pred, loss = GCNEdgeBased_model(data_batch)
+	T_Edge2Cluster(data_batch, edge_pred, n_components=50, device=device)
 
