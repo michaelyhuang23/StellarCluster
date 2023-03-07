@@ -38,12 +38,14 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 EPOCH = 100
 
-GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model/99.pth')
+GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model/99.pth').to(device)
 
 
 for i, data_batch in enumerate(val_loader):
+	data_batch = data_batch.to(device)
 	with torch.no_grad():
 		GCNEdgeBased_model.eval()
 		edge_pred, loss = GCNEdgeBased_model(data_batch)
-	T_Edge2Cluster(data_batch, edge_pred, n_components=50, device=device)
+	for FX in T_Edge2Cluster(data_batch, edge_pred, n_components=50, device=device):
+		print(FX)
 

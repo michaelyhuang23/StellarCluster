@@ -6,6 +6,8 @@ import numpy as np
 from sklearn.cluster import DBSCAN, KMeans, AffinityPropagation, SpectralClustering
 from sklearn.mixture import GaussianMixture
 from hdbscan import HDBSCAN
+from torch.optim import SGD, Adam
+
 
 from tools.gnn_models import *
 
