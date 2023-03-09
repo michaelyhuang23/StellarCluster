@@ -42,10 +42,22 @@ GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model/99.pth').to(device)
 
 
 for i, data_batch in enumerate(val_loader):
+	print(data_batch)
 	data_batch = data_batch.to(device)
 	with torch.no_grad():
 		GCNEdgeBased_model.eval()
 		edge_pred, loss = GCNEdgeBased_model(data_batch)
-	for FX in T_Edge2Cluster(data_batch, edge_pred, n_components=50, device=device):
-		print(FX)
+	data_batch.edge_attr = edge_pred
+	total_metric = []
+	for FX in T_Edge2Cluster(data_batch, gap=100, n_components=50, cluster_lr=0.003, cluster_regularizer=0.00001, device=device):
+		print(torch.mean(FX), torch.min(FX), torch.max(FX), torch.std(FX))
+		metric = ClusterEvalAll(FX.detach().cpu().numpy(), data_batch['y'].cpu().numpy())
+		print(metric())
+		print()
+		total_metric.append(metric())
+	total_metric = ClusterEvalAll.aggregate(total_metric)
+	print()
+	print('total metric:')
+	print(total_metric)
+	print()
 

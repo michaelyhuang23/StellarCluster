@@ -24,11 +24,14 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         self.similar_weight = similar_weight
         self.regularizer = regularizer
 
-    def forward(self, data):
-        X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+    def forward(self, data, device='cpu'):
+        X, edge_index, edge_attr, input_id, edge_label_index = data.x, data.edge_index, data.edge_attr, data.input_id, data.edge_label_index
         if edge_attr is None or len(edge_attr) == 0:
             edge_attr = X[edge_index[1]] - X[edge_index[0]]  # should we use abs? 
-        X = torch.zeros_like(X) 
+        X = torch.zeros_like(X)
+
+        
+        
         X = self.convN1(X, edge_index, edge_attr)
         X = self.dropout1(X)
         edge_attr = self.convE1(X, edge_index, edge_attr)
@@ -50,21 +53,20 @@ class GCNEdgeBased(nn.Module): # non-overlapping
 class GCNEdge2Cluster(nn.Module):
     def __init__(self, input_size, num_cluster=30, regularizer=0.01):
         super().__init__()
-        self.conv1 = GCNConv(input_size, 32)
+        self.conv1 = GCNConv(input_size, 64)
         self.dropout1 = nn.Dropout(p=0)
-        self.conv2 = GCNConv(32, num_cluster)
+        self.conv2 = GCNConv(64, num_cluster)
         self.num_cluster = num_cluster
         self.regularizer = regularizer
 
-    def forward(self, data, edge_pred):
-        X, edge_index = data.x, data.edge_index
-        X = F.relu(self.conv1(X, edge_index))
+    def forward(self, data):
+        X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        X = F.relu(self.conv1(X, edge_index, edge_attr))
         X = self.dropout1(X)
-        X = self.conv2(X, edge_index)
+        X = self.conv2(X, edge_index, edge_attr)
         FX = F.softmax(X, dim=-1) # change to softmax if not doing overlapping clusters
         FF = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
         NFX = torch.log(1-FX**2)
         pregularize = -torch.sum(torch.log(1.0001-torch.exp(torch.sum(NFX, dim=0))), dim=0)
-        loss = torch.mean((FF - edge_pred)**2) + self.regularizer * pregularize
-        return FX, loss
-
+        loss = torch.mean((FF - edge_attr)**2) 
+        return FX, loss + self.regularizer * pregularize

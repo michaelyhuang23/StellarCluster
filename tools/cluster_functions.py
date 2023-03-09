@@ -8,7 +8,7 @@ from sklearn.mixture import GaussianMixture
 from hdbscan import HDBSCAN
 from torch.optim import SGD, Adam
 
-
+from tools.evaluation_metric import *
 from tools.gnn_models import *
 
 def C_HDBSCAN(data, min_cluster_size=5, min_samples=None, cluster_selection_method='eom'):
@@ -25,27 +25,30 @@ def C_GaussianMixture(data, n_components):
     clusterer = GaussianMixture(n_components=n_components, covariance_type='full')
     return clusterer.fit_predict(data)
 
-def C_Edge2Cluster(data, edge_pred, n_components, cluster_lr=0.003, cluster_regularizer=0.00001, device='cpu'):
+def C_Edge2Cluster(data, n_components, cluster_lr=0.003, cluster_regularizer=0.00001, device='cpu'): # data edge_attr should be predicted probability
     model = GCNEdge2Cluster(data.x.shape[-1], num_cluster=n_components, regularizer=cluster_regularizer).to(device)
     optim = Adam(model.parameters(), lr=cluster_lr, weight_decay=1e-5)
     model.train()
     for i in range(4000):
-        optim.zero_grad()
-        FX, loss = model(data, edge_pred)
+        FX, loss = model(data)
         loss.backward()
         optim.step()
+        optim.zero_grad()
         if (i+1)%100 == 0:
             print('cluster loss:',loss.item())
-    FX, loss = model(data)
+            metric = ClusterEvalAll(FX.detach().cpu().numpy(), data['y'].cpu().numpy())
+            print(metric())
+    with torch.no_grad():
+        FX, loss = model(data)
     return FX.detach().cpu()
 
-def T_Edge2Cluster(data, edge_pred, n_components, gap=100, cluster_lr=0.003, cluster_regularizer=0.00001, device='cpu'):
+def T_Edge2Cluster(data, n_components, gap=100, cluster_lr=0.003, cluster_regularizer=0.00001, device='cpu'):
     model = GCNEdge2Cluster(data.x.shape[-1], num_cluster=n_components, regularizer=cluster_regularizer).to(device)
     optim = Adam(model.parameters(), lr=cluster_lr, weight_decay=1e-5)
     model.train()
     for i in range(4000):
         optim.zero_grad()
-        FX, loss = model(data, edge_pred)
+        FX, loss = model(data)
         loss.backward()
         optim.step()
         if (i+1)%gap == 0:

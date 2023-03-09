@@ -3,7 +3,7 @@ sys.path.append('..')
 
 import torch
 from torch.optim import SGD, Adam
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import LinkNeighborLoader, NeighborLoader
 import torch_geometric.transforms as T
 from torch.utils.tensorboard import SummaryWriter
 from tools.caterpillar_dataset import NormalCaterpillarDataset
@@ -28,11 +28,9 @@ def filterer(df):
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
-train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=1000, force_undirected=True))
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
+train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=5, force_undirected=True))
+val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=5, force_undirected=True))
 
-val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=1000, force_undirected=True))
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 
 EPOCH = 100
@@ -40,10 +38,10 @@ EPOCH = 100
 GCNEdgeBased_model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device)
 GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_decay=1e-5)
 
-def train_one_batch(model, optim, data_batch, evaluate=False):
+def train_one_batch(model, optim, data_batch, evaluate=False, device='cpu'):
 	model.train()
 	optim.zero_grad()
-	pred, loss = model(data_batch)
+	pred, loss = model(data_batch, device)
 	loss.backward()
 	optim.step()
 	if evaluate:
@@ -61,13 +59,25 @@ def evaluate_one_batch(model, data_batch):
 
 for epoch in range(EPOCH):
 	print('training begins...')
-	for i, data_batch in enumerate(train_loader):
+	for i, full_data in enumerate(train_dataset):
 		evaluate_acc = (i%10)==0
-		loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch.to(device), evaluate=evaluate_acc)
-		print(loss)
+		data_loader = NeighborLoader(full_data, num_neighbors=[30, 30, 30], batch_size=128)
+
+		data_loader_iter = iter(data_loader)
+		next(data_loader_iter)
+		mini_data = next(data_loader_iter)
+		print(mini_data)
+		print(mini_data.input_id)
+		print(mini_data.keys)
+
+
+		for data_batch in data_loader:
+			loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch, evaluate=evaluate_acc, device=device)
+			print(loss)
+
 		if evaluate_acc:
 			print(acc())
-		writer.add_scalar('Train/Loss', loss, epoch*len(train_loader)+i)
+		writer.add_scalar('Train/Loss', loss, epoch*len(train_dataset)+i)
 
 	print('evaluation begins...')
 	validation_accs = []
@@ -89,10 +99,5 @@ for epoch in range(EPOCH):
 	writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
 
 	torch.save(GCNEdgeBased_model, f'GCNEdgeBased_model1000/{epoch}.pth')
-
-
-
-
-
 
 
