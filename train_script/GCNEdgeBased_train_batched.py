@@ -38,10 +38,10 @@ EPOCH = 100
 GCNEdgeBased_model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device)
 GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_decay=1e-5)
 
-def train_one_batch(model, optim, data_batch, evaluate=False, device='cpu'):
+def train_one_batch(model, optim, data_batch, evaluate=False):
 	model.train()
 	optim.zero_grad()
-	pred, loss = model(data_batch, device)
+	pred, loss = model(data_batch)
 	loss.backward()
 	optim.step()
 	if evaluate:
@@ -61,7 +61,7 @@ for epoch in range(EPOCH):
 	print('training begins...')
 	for i, full_data in enumerate(train_dataset):
 		evaluate_acc = (i%10)==0
-		data_loader = NeighborLoader(full_data, num_neighbors=[30, 30, 30], batch_size=128)
+		data_loader = LinkNeighborLoader(full_data, num_neighbors=[30, 30], batch_size=128)
 
 		data_loader_iter = iter(data_loader)
 		next(data_loader_iter)
@@ -72,7 +72,7 @@ for epoch in range(EPOCH):
 
 
 		for data_batch in data_loader:
-			loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch, evaluate=evaluate_acc, device=device)
+			loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch.to(device), evaluate=evaluate_acc)
 			print(loss)
 
 		if evaluate_acc:

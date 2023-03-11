@@ -24,29 +24,30 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         self.similar_weight = similar_weight
         self.regularizer = regularizer
 
-    def forward(self, data, device='cpu'):
+    def forward(self, data):
         X, edge_index, edge_attr, input_id, edge_label_index = data.x, data.edge_index, data.edge_attr, data.input_id, data.edge_label_index
         if edge_attr is None or len(edge_attr) == 0:
             edge_attr = X[edge_index[1]] - X[edge_index[0]]  # should we use abs? 
         X = torch.zeros_like(X)
-
-        
-        
         X = self.convN1(X, edge_index, edge_attr)
         X = self.dropout1(X)
         edge_attr = self.convE1(X, edge_index, edge_attr)
         X = self.convN2(X, edge_index, edge_attr)
         X = self.dropout2(X)
         edge_attr = self.convE2(X, edge_index, edge_attr)
-        edge_pred = self.classifier(edge_attr)
+
+        edge_pred = edge_attr[input_id]
+        edge_type = data.edge_type[input_id].float()
+
+        edge_pred = self.classifier(edge_pred)
         edge_pred = torch.sigmoid(edge_pred)[:,0]
         #print(torch.mean(edge_pred).item(), torch.std(edge_pred).item())
         loss_regularze = -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25
         #print(loss_regularze.item())
 
-        weights = torch.ones_like(data.edge_type).float()
+        weights = torch.ones_like(edge_type).float()
         weights[edge_pred>0.5] *= self.similar_weight
-        loss = F.binary_cross_entropy(edge_pred, data.edge_type.float(), weight=weights)
+        loss = F.binary_cross_entropy(edge_pred, edge_type, weight=weights)
         return edge_pred, loss + loss_regularze * self.regularizer
 
 
