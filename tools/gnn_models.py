@@ -34,10 +34,12 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         edge_attr = self.convE1(X, edge_index, edge_attr)
         X = self.convN2(X, edge_index, edge_attr)
         X = self.dropout2(X)
-        edge_attr = self.convE2(X, edge_index, edge_attr)
 
-        edge_pred = edge_attr[input_id]
-        edge_type = data.edge_type[input_id].float()
+        sparse_adj = torch.sparse_coo_tensor(edge_index, edge_attr, (len(X), len(X)))
+        edge_pred = sparse_adj[edge_label_index[0], edge_label_index[1]]
+        edge_pred = self.convE2(X, edge_label_index, edge_pred)
+
+        edge_type = data
 
         edge_pred = self.classifier(edge_pred)
         edge_pred = torch.sigmoid(edge_pred)[:,0]

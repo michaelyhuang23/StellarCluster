@@ -61,13 +61,15 @@ for epoch in range(EPOCH):
 	print('training begins...')
 	for i, full_data in enumerate(train_dataset):
 		evaluate_acc = (i%10)==0
-		data_loader = LinkNeighborLoader(full_data, num_neighbors=[30, 30], batch_size=128)
+		data_loader = LinkNeighborLoader(full_data, num_neighbors=[10, 10], batch_size=128)
 
 		data_loader_iter = iter(data_loader)
 		next(data_loader_iter)
 		mini_data = next(data_loader_iter)
 		print(mini_data)
 		print(mini_data.input_id)
+		print(mini_data.edge_label_index)
+		print(mini_data.edge_index)
 		print(mini_data.keys)
 
 
