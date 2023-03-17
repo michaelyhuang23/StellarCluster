@@ -59,7 +59,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
                 labels = torch.tensor(df[self.label_column].to_numpy()).long()
                 labels -= torch.min(labels) # first one is always 0
 
-            data = Data(x=features, edge_index=torch.tensor([[],[]]).long(), y=labels, pos=positions)
+            data = Data(x=features, edge_index=torch.tensor([[],[]]).long(), y=labels, pos=features)  # pos decides what KNN uses
 
             if self.pre_transform is not None:     # we cannot build knn here because the whole graph is too large
                 data = self.pre_transform(data)
