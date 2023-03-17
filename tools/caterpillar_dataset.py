@@ -59,7 +59,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
                 labels = torch.tensor(df[self.label_column].to_numpy()).long()
                 labels -= torch.min(labels) # first one is always 0
 
-            data = Data(x=features, edge_index=torch.tensor([[],[]]).long(), y=labels, pos=features)  # pos decides what KNN uses
+            data = Data(x=features, edge_index=torch.tensor([[],[]]).long(), y=labels, pos=features, position=positions)  # pos decides what KNN uses
 
             if self.pre_transform is not None:     # we cannot build knn here because the whole graph is too large
                 data = self.pre_transform(data)
@@ -79,7 +79,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
         xsun = np.cos(phi)*radius_sun
         ysun = np.sin(phi)*radius_sun
         zsun = np.random.normal(-zsun_range, zsun_range)
-        mask = torch.sum((data['pos'] - torch.tensor([xsun, ysun, zsun])[None, ...])**2, dim=-1) < radius**2
+        mask = torch.sum((data['position'] - torch.tensor([xsun, ysun, zsun])[None, ...])**2, dim=-1) < radius**2
         small_data = data.subgraph(mask)
         if filter_size is not None:
             small_data = self.filter_clusters(small_data, filter_size)
