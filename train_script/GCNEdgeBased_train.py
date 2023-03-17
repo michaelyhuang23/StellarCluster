@@ -41,59 +41,59 @@ GCNEdgeBased_model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device
 GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_decay=1e-5)
 
 def train_one_batch(model, optim, data_batch, evaluate=False):
-	model.train()
-	optim.zero_grad()
-	print(data_batch)
+    model.train()
+    optim.zero_grad()
+    print(data_batch)
     print(data_batch.edge_index)
-	pred = model(data_batch)
-	loss = model.loss(pred, data_batch.edge_type)
-	loss.backward()
-	optim.step()
-	if evaluate:
-		classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
-		return loss.cpu().item(), classification_metric
-	return loss.cpu().item(), None
+    pred = model(data_batch)
+    loss = model.loss(pred, data_batch.edge_type)
+    loss.backward()
+    optim.step()
+    if evaluate:
+        classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
+        return loss.cpu().item(), classification_metric
+    return loss.cpu().item(), None
 
 
 def evaluate_one_batch(model, data_batch):
-	model.eval()
-	with torch.no_grad():
-		pred = model(data_batch)
-		loss = model.loss(pred, data_batch.edge_type)
-		classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
-		return loss.cpu().item(), classification_metric
+    model.eval()
+    with torch.no_grad():
+        pred = model(data_batch)
+        loss = model.loss(pred, data_batch.edge_type)
+        classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
+        return loss.cpu().item(), classification_metric
 
 
 for epoch in range(EPOCH):
-	print('training begins...')
-	for i, data_batch in enumerate(train_loader):
-		evaluate_acc = (i%10)==0
-		loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch.to(device), evaluate=evaluate_acc)
-		print(loss)
-		if evaluate_acc:
-			print(acc())
-		writer.add_scalar('Train/Loss', loss, epoch*len(train_loader)+i)
+    print('training begins...')
+    for i, data_batch in enumerate(train_loader):
+        evaluate_acc = (i%10)==0
+        loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch.to(device), evaluate=evaluate_acc)
+        print(loss)
+        if evaluate_acc:
+            print(acc())
+        writer.add_scalar('Train/Loss', loss, epoch*len(train_loader)+i)
 
-	print('evaluation begins...')
-	validation_accs = []
-	losses = []
-	for i, data_batch in enumerate(val_loader):
-		loss, acc = evaluate_one_batch(GCNEdgeBased_model, data_batch.to(device))
-		validation_accs.append(acc())
-		losses.append(loss)
-		if i%10 == 0:
-			print(loss)
-			print(acc())
+    print('evaluation begins...')
+    validation_accs = []
+    losses = []
+    for i, data_batch in enumerate(val_loader):
+        loss, acc = evaluate_one_batch(GCNEdgeBased_model, data_batch.to(device))
+        validation_accs.append(acc())
+        losses.append(loss)
+        if i%10 == 0:
+            print(loss)
+            print(acc())
 
-	validation_acc = ClassificationAcc.aggregate(validation_accs)
-	avg_loss = sum(losses)/len(losses)
-	print(avg_loss)
-	print(validation_acc)
-	writer.add_scalar('Val/Loss', avg_loss, epoch)
-	writer.add_scalar('Val/EdgeRecall', validation_acc['recall'], epoch)
-	writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
+    validation_acc = ClassificationAcc.aggregate(validation_accs)
+    avg_loss = sum(losses)/len(losses)
+    print(avg_loss)
+    print(validation_acc)
+    writer.add_scalar('Val/Loss', avg_loss, epoch)
+    writer.add_scalar('Val/EdgeRecall', validation_acc['recall'], epoch)
+    writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
 
-	torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model100/{epoch}.pth')
+    torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model100/{epoch}.pth')
 
 
 
