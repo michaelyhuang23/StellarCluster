@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tools.caterpillar_dataset import NormalCaterpillarDataset
 from tools.gnn_models import GCNEdgeBased
 from tools.evaluation_metric import *
+from tools.neighbor_loader_fixer import add_indices
 
 
 writer = SummaryWriter()
@@ -28,8 +29,8 @@ def filterer(df):
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
-train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=5, force_undirected=True))
-val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=5, force_undirected=True))
+train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=1000, force_undirected=True))
+val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=1000, force_undirected=True))
 
 
 
@@ -41,54 +42,61 @@ GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_deca
 def train_one_batch(model, optim, data_batch, evaluate=False):
 	model.train()
 	optim.zero_grad()
-	pred, loss = model(data_batch)
+	edge_pred = model(data_batch)
+	edge_pred = edge_pred[data_batch.match_id]
+	edge_type = data_batch.edge_type[data_batch.match_id]
+	loss = model.loss(edge_pred, edge_type)
 	loss.backward()
 	optim.step()
 	if evaluate:
-		classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
+		classification_metric = ClassificationAcc(torch.round(edge_pred.detach().cpu()).long(), edge_type.detach().cpu().long() ,2)
 		return loss.cpu().item(), classification_metric
 	return loss.cpu().item(), None
 
 
 def evaluate_one_batch(model, data_batch):
 	model.eval()
-	pred, loss = model(data_batch)
-	classification_metric = ClassificationAcc(torch.round(pred.detach().cpu()).long(), data_batch.edge_type.detach().cpu().long() ,2)
-	return loss.cpu().item(), classification_metric
+	with torch.no_grad():
+		edge_pred = model(data_batch)
+		edge_pred = edge_pred[data_batch.match_id]
+		edge_type = data_batch.edge_type[data_batch.match_id]
+		loss = model.loss(edge_pred, edge_type)
+		classification_metric = ClassificationAcc(torch.round(edge_pred.detach().cpu()).long(), edge_type.detach().cpu().long() ,2)
+		return loss.cpu().item(), classification_metric
 
 
 for epoch in range(EPOCH):
 	print('training begins...')
 	for i, full_data in enumerate(train_dataset):
 		evaluate_acc = (i%10)==0
-		data_loader = LinkNeighborLoader(full_data, num_neighbors=[10, 10], batch_size=128)
-
-		data_loader_iter = iter(data_loader)
-		next(data_loader_iter)
-		mini_data = next(data_loader_iter)
-		print(mini_data)
-		print(mini_data.input_id)
-		print(mini_data.edge_label_index)
-		print(mini_data.edge_index)
-		print(mini_data.keys)
-
-
+		print(full_data.edge_index.shape[-1])
+		data_loader = LinkNeighborLoader(full_data, num_neighbors=[256, 256], batch_size=8192, edge_label_index=full_data.edge_index, edge_label=full_data.edge_type, transform=add_indices)
+		losses = []
+		accs = []
 		for data_batch in data_loader:
 			loss, acc = train_one_batch(GCNEdgeBased_model, GCNEdgeBased_optim, data_batch.to(device), evaluate=evaluate_acc)
-			print(loss)
-
+			losses.append(loss)
+			if evaluate_acc:
+				accs.append(acc())
+		loss = sum(losses)/len(losses)
+		print(loss)
 		if evaluate_acc:
-			print(acc())
+			acc = ClassificationAcc.aggregate(accs)
+			print(acc)
 		writer.add_scalar('Train/Loss', loss, epoch*len(train_dataset)+i)
 
 	print('evaluation begins...')
 	validation_accs = []
 	losses = []
-	for i, data_batch in enumerate(val_loader):
-		loss, acc = evaluate_one_batch(GCNEdgeBased_model, data_batch.to(device))
-		validation_accs.append(acc())
-		losses.append(loss)
-		if i%10 == 0:
+	for i, full_data in enumerate(val_dataset):
+		print_acc = (i%10)==0
+		data_loader = LinkNeighborLoader(full_data, num_neighbors=[256, 256], batch_size=8192, edge_label_index=full_data.edge_index, edge_label=full_data.edge_type, transform=add_indices)
+
+		for data_batch in data_loader:
+			loss, acc = evaluate_one_batch(GCNEdgeBased_model, data_batch.to(device))
+			validation_accs.append(acc())
+			losses.append(loss)
+		if print_acc:
 			print(loss)
 			print(acc())
 
@@ -100,6 +108,6 @@ for epoch in range(EPOCH):
 	writer.add_scalar('Val/EdgeRecall', validation_acc['recall'], epoch)
 	writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
 
-	torch.save(GCNEdgeBased_model, f'GCNEdgeBased_model1000/{epoch}.pth')
+	torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model1000/{epoch}.pth')
 
 

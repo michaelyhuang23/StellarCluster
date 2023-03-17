@@ -25,7 +25,7 @@ class NodeConv(MessagePassing):
         deg_inv = deg.pow(-1)
 
         edge_attr = self.pass_map(edge_attr)
-        message_received = self.propagate(edge_index, edge_attr=edge_attr) * deg_inv[..., None]
+        message_received = self.propagate(edge_index, size=(x.size(0), x.size(0)), edge_attr=edge_attr) * deg_inv[..., None]
 
         out = self.relu(x + message_received)  # ReLU(xW + sum_neighbor EW)
 

@@ -10,7 +10,6 @@ def add_indices(data_batch): # complicated tensor ops to map edges in edge_label
 
 	edge_index_order = torch.concatenate([edge_index_order, edge_label_index_order])
 	edge_index_order, indices = torch.unique(edge_index_order, sorted=True, return_inverse=True)
-	print(indices)
 
 	edge_index = torch.concatenate([edge_index, edge_label_index], dim=-1)
 	new_edge_index = torch.zeros((2, len(edge_index_order))).long()
@@ -19,7 +18,7 @@ def add_indices(data_batch): # complicated tensor ops to map edges in edge_label
 
 	if 'edge_type' in data_batch.keys:
 		edge_type = torch.concatenate([data_batch.edge_type, data_batch.edge_label])  # must have valid edge_labels
-		new_edge_type = torch.zeros((len(edge_index_order))).long()
+		new_edge_type = torch.zeros((len(edge_index_order))).bool()
 		new_edge_type[indices] = edge_type
 		data_batch.edge_type = new_edge_type
 

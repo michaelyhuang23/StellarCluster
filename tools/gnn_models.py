@@ -24,8 +24,16 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         self.similar_weight = similar_weight
         self.regularizer = regularizer
 
+    def regularize(self, edge_pred):
+        return -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25 * self.regularizer
+
+    def loss(self, edge_pred, edge_type):
+        if edge_type.dtype != torch.float32:
+            edge_type = edge_type.float()
+        return F.binary_cross_entropy(edge_pred, edge_type) + self.regularize(edge_pred)
+
     def forward(self, data):
-        X, edge_index, edge_attr, input_id, edge_label_index = data.x, data.edge_index, data.edge_attr, data.input_id, data.edge_label_index
+        X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         if edge_attr is None or len(edge_attr) == 0:
             edge_attr = X[edge_index[1]] - X[edge_index[0]]  # should we use abs? 
         X = torch.zeros_like(X)
@@ -34,23 +42,11 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         edge_attr = self.convE1(X, edge_index, edge_attr)
         X = self.convN2(X, edge_index, edge_attr)
         X = self.dropout2(X)
+        edge_attr = self.convE2(X, edge_index, edge_attr)
 
-        sparse_adj = torch.sparse_coo_tensor(edge_index, edge_attr, (len(X), len(X)))
-        edge_pred = sparse_adj[edge_label_index[0], edge_label_index[1]]
-        edge_pred = self.convE2(X, edge_label_index, edge_pred)
-
-        edge_type = data
-
-        edge_pred = self.classifier(edge_pred)
+        edge_pred = self.classifier(edge_attr)
         edge_pred = torch.sigmoid(edge_pred)[:,0]
-        #print(torch.mean(edge_pred).item(), torch.std(edge_pred).item())
-        loss_regularze = -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25
-        #print(loss_regularze.item())
-
-        weights = torch.ones_like(edge_type).float()
-        weights[edge_pred>0.5] *= self.similar_weight
-        loss = F.binary_cross_entropy(edge_pred, edge_type, weight=weights)
-        return edge_pred, loss + loss_regularze * self.regularizer
+        return edge_pred
 
 
 class GCNEdge2Cluster(nn.Module):
