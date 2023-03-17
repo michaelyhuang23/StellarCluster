@@ -36,6 +36,8 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         if edge_attr is None or len(edge_attr) == 0:
             edge_attr = X[edge_index[1]] - X[edge_index[0]]  # should we use abs? 
+        else:
+            edge_attr = (X[edge_index[1]] - X[edge_index[0]]) / edge_attr[..., None]
         X = torch.zeros_like(X)
         X = self.convN1(X, edge_index, edge_attr)
         X = self.dropout1(X)
