@@ -27,7 +27,7 @@ def filterer(df):
     return df.loc[df['redshiftstar']<2].copy()
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
-position_columns = ['xstar', 'ystar', 'zstar']
+position_columns = feature_columns
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=100, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':100, 'method':'threshold'})])
 train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
