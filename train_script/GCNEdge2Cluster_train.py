@@ -29,16 +29,16 @@ def filterer(df):
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
-train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=100, force_undirected=True))
+data_transforms = T.Compose(transforms=[T.KNNGraph(k=100, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':100, 'method':'threshold'})])
+train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
-
-val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=T.KNNGraph(k=100, force_undirected=True))
+val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 
 EPOCH = 100
 
-GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model/99.pth').to(device)
+GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model100/99.pth').to(device)
 
 
 for i, data_batch in enumerate(val_loader):
@@ -46,18 +46,23 @@ for i, data_batch in enumerate(val_loader):
 	data_batch = data_batch.to(device)
 	with torch.no_grad():
 		GCNEdgeBased_model.eval()
-		edge_pred, loss = GCNEdgeBased_model(data_batch)
+		edge_pred = GCNEdgeBased_model(data_batch)
+		loss = GCNEdgeBased_model.loss(edge_pred, data_batch.edge_type)
 	data_batch.edge_attr = edge_pred
-	total_metric = []
-	for FX in T_Edge2Cluster(data_batch, gap=100, n_components=50, cluster_lr=0.003, cluster_regularizer=0.00001, device=device):
-		print(torch.mean(FX), torch.min(FX), torch.max(FX), torch.std(FX))
-		metric = ClusterEvalAll(FX.detach().cpu().numpy(), data_batch['y'].cpu().numpy())
-		print(metric())
-		print()
-		total_metric.append(metric())
-	total_metric = ClusterEvalAll.aggregate(total_metric)
+	metric = None
+	train_generator = T_Edge2Cluster(data_batch, gap=10, n_components=50, cluster_lr=0.0003, cluster_regularizer=0, epochs=4000, device=device)
+	for j, (FX, loss) in enumerate(train_generator):
+		print(torch.mean(torch.sum(FX, dim=0)), torch.std(torch.sum(FX, dim=0)), torch.max(torch.sum(FX, dim=0)))
+		metric = ClusterEvalAll(FX.detach().cpu().numpy(), data_batch['y'].cpu().numpy())()
+		writer.add_scalar('Edge2ClusterLoss', loss, 4000*i + j)
+		writer.add_scalar('IoU_TP', metric['IoU_TP'], 4000*i + j)
+		writer.add_scalar('IoU_recall', metric['IoU_recall'], 4000*i + j)
+		writer.add_scalar('Mode_TP', metric['Mode_TP'], 4000*i + j)
+		writer.add_scalar('Mode_recall', metric['Mode_recall'], 4000*i + j)
+		writer.add_scalar('ModeProb_TP', metric['ModeProb_TP'], 4000*i + j)
+		writer.add_scalar('ModeProb_recall', metric['ModeProb_recall'], 4000*i + j)
 	print()
-	print('total metric:')
-	print(total_metric)
+	print('final metric:')
+	print(metric)
 	print()
 

@@ -25,11 +25,11 @@ def C_GaussianMixture(data, n_components):
     clusterer = GaussianMixture(n_components=n_components, covariance_type='full')
     return clusterer.fit_predict(data)
 
-def C_Edge2Cluster(data, n_components, cluster_lr=0.003, cluster_regularizer=0.00001, device='cpu'): # data edge_attr should be predicted probability
+def C_Edge2Cluster(data, n_components, cluster_lr=0.003, cluster_regularizer=0.00001, epochs=4000, device='cpu'): # data edge_attr should be predicted probability
     model = GCNEdge2Cluster(data.x.shape[-1], num_cluster=n_components, regularizer=cluster_regularizer).to(device)
     optim = Adam(model.parameters(), lr=cluster_lr, weight_decay=1e-5)
     model.train()
-    for i in range(4000):
+    for i in range(epochs):
         FX, loss = model(data)
         loss.backward()
         optim.step()
@@ -40,17 +40,17 @@ def C_Edge2Cluster(data, n_components, cluster_lr=0.003, cluster_regularizer=0.0
             print(metric())
     with torch.no_grad():
         FX, loss = model(data)
-    return FX.detach().cpu()
+    return FX.detach().cpu(), loss.item()
 
-def T_Edge2Cluster(data, n_components, gap=100, cluster_lr=0.003, cluster_regularizer=0.00001, device='cpu'):
+def T_Edge2Cluster(data, n_components, gap=100, cluster_lr=0.003, cluster_regularizer=0.00001, epochs=4000, device='cpu'):
     model = GCNEdge2Cluster(data.x.shape[-1], num_cluster=n_components, regularizer=cluster_regularizer).to(device)
     optim = Adam(model.parameters(), lr=cluster_lr, weight_decay=1e-5)
     model.train()
-    for i in range(4000):
+    for i in range(epochs):
         optim.zero_grad()
         FX, loss = model(data)
         loss.backward()
         optim.step()
         if (i+1)%gap == 0:
             print('cluster loss:',loss.item())
-            yield FX.detach().cpu()
+            yield FX.detach().cpu(), loss.item()

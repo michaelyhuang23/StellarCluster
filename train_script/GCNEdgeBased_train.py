@@ -93,7 +93,7 @@ for epoch in range(EPOCH):
     writer.add_scalar('Val/EdgeRecall', validation_acc['recall'], epoch)
     writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
 
-    torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model100/{epoch}.pth')
+    torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model100new/{epoch}.pth')
 
 
 
