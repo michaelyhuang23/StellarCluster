@@ -38,7 +38,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 EPOCH = 100
 
-GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model100/99.pth').to(device)
+GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model100new/99.pth').to(device)
 
 
 for i, data_batch in enumerate(val_loader):
@@ -50,7 +50,7 @@ for i, data_batch in enumerate(val_loader):
 		loss = GCNEdgeBased_model.loss(edge_pred, data_batch.edge_type)
 	data_batch.edge_attr = edge_pred
 	metric = None
-	train_generator = T_Edge2Cluster(data_batch, gap=10, n_components=50, cluster_lr=0.0003, cluster_regularizer=0, epochs=4000, device=device)
+	train_generator = T_Edge2Cluster(data_batch, gap=10, n_components=50, cluster_lr=0.001, cluster_regularizer=1, epochs=4000, device=device)
 	for j, (FX, loss) in enumerate(train_generator):
 		print(torch.mean(torch.sum(FX, dim=0)), torch.std(torch.sum(FX, dim=0)), torch.max(torch.sum(FX, dim=0)))
 		metric = ClusterEvalAll(FX.detach().cpu().numpy(), data_batch['y'].cpu().numpy())()

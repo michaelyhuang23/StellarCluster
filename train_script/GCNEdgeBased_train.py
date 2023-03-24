@@ -43,8 +43,6 @@ GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_deca
 def train_one_batch(model, optim, data_batch, evaluate=False):
     model.train()
     optim.zero_grad()
-    print(data_batch)
-    print(data_batch.edge_index)
     pred = model(data_batch)
     loss = model.loss(pred, data_batch.edge_type)
     loss.backward()
