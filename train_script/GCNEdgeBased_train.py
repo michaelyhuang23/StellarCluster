@@ -28,14 +28,14 @@ def filterer(df):
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
-data_transforms = T.Compose(transforms=[T.KNNGraph(k=100, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':100, 'method':'threshold'})])
+data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) # 
 train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
 val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 
-EPOCH = 100
+EPOCH = 300
 
 GCNEdgeBased_model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device)
 GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_decay=1e-5)
@@ -91,7 +91,7 @@ for epoch in range(EPOCH):
     writer.add_scalar('Val/EdgeRecall', validation_acc['recall'], epoch)
     writer.add_scalar('Val/Acc', validation_acc['accuracy'], epoch)
 
-    torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model100new/{epoch}.pth')
+    torch.save(GCNEdgeBased_model, f'weights/GCNEdgeBased_model300new/{epoch}.pth')
 
 
 

@@ -5,7 +5,7 @@ from torch_geometric.nn import GCNConv
 
 import sys
 sys.path.append('..')
-from tools.gnn_layers import NodeConv, EdgeConv
+from tools.gnn_layers import NodeConv, EdgeConv, EdgeAttn
 
 
 
@@ -40,6 +40,41 @@ class GCNEdgeBased(nn.Module): # non-overlapping
             edge_attr = (X[edge_index[1]] - X[edge_index[0]]) / edge_attr[..., None]
         X = torch.zeros_like(X)
         X = self.convN1(X, edge_index, edge_attr)
+        X = self.dropout1(X)
+        edge_attr = self.convE1(X, edge_index, edge_attr)
+        X = self.convN2(X, edge_index, edge_attr)
+        X = self.dropout2(X)
+        edge_attr = self.convE2(X, edge_index, edge_attr)
+
+        edge_pred = self.classifier(edge_attr)
+        edge_pred = torch.sigmoid(edge_pred)[:,0]
+        return edge_pred
+
+
+class GANEdgeBased(nn.Module): # non-overlapping
+    def __init__(self, input_size, similar_weight=1, regularizer=0.1):
+        super().__init__()
+        self.input_size = input_size
+        self.attn1 = EdgeAttn(input_size, input_size, 3)
+        self.similar_weight = similar_weight
+        self.regularizer = regularizer
+
+    def regularize(self, edge_pred):
+        return -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25 * self.regularizer
+
+    def loss(self, edge_pred, edge_type):
+        if edge_type.dtype != torch.float32:
+            edge_type = edge_type.float()
+        return F.binary_cross_entropy(edge_pred, edge_type) + self.regularize(edge_pred)
+
+    def forward(self, data):
+        X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        if edge_attr is None or len(edge_attr) == 0:
+            edge_attr = X[edge_index[1]] - X[edge_index[0]]  # should we use abs? 
+        else:
+            edge_attr = (X[edge_index[1]] - X[edge_index[0]]) / edge_attr[..., None]
+        X = torch.zeros_like(X)
+        X = self.attn1(X, edge_index, edge_attr)
         X = self.dropout1(X)
         edge_attr = self.convE1(X, edge_index, edge_attr)
         X = self.convN2(X, edge_index, edge_attr)

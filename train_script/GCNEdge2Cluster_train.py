@@ -29,7 +29,7 @@ def filterer(df):
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
-data_transforms = T.Compose(transforms=[T.KNNGraph(k=100, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':100, 'method':'threshold'})])
+data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) # 
 train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
 val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
@@ -38,7 +38,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 
 EPOCH = 100
 
-GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model100new/99.pth').to(device)
+GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model300new/299.pth').to(device)
 
 
 for i, data_batch in enumerate(val_loader):
@@ -50,7 +50,7 @@ for i, data_batch in enumerate(val_loader):
 		loss = GCNEdgeBased_model.loss(edge_pred, data_batch.edge_type)
 	data_batch.edge_attr = edge_pred
 	metric = None
-	train_generator = T_Edge2Cluster(data_batch, gap=10, n_components=50, cluster_lr=0.001, cluster_regularizer=1, epochs=4000, device=device)
+	train_generator = T_Edge2Cluster(data_batch, gap=10, n_components=50, cluster_lr=0.0001, cluster_regularizer=0.01, epochs=4000, device=device)
 	for j, (FX, loss) in enumerate(train_generator):
 		print(torch.mean(torch.sum(FX, dim=0)), torch.std(torch.sum(FX, dim=0)), torch.max(torch.sum(FX, dim=0)))
 		metric = ClusterEvalAll(FX.detach().cpu().numpy(), data_batch['y'].cpu().numpy())()

@@ -1,6 +1,8 @@
 import sys
 sys.path.append('..')
 
+import json
+
 import torch
 from torch.optim import SGD, Adam
 from torch_geometric.loader import DataLoader
@@ -29,39 +31,52 @@ def filterer(df):
 
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
-data_transforms = T.Compose(transforms=[T.KNNGraph(k=100, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':100, 'method':'threshold'})])
+data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #
 train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
 val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
+test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=test_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
+test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-EPOCH = 100
-
-GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model100new/99.pth').to(device)
+GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model300new/299.pth').to(device)
 
 
-for i, data_batch in enumerate(val_loader):
-	print(data_batch)
-	data_batch_train = data_batch.to(device)
-	with torch.no_grad():
-		GCNEdgeBased_model.eval()
-		edge_pred = GCNEdgeBased_model(data_batch_train)
-		loss = GCNEdgeBased_model.loss(edge_pred, data_batch_train.edge_type)
+def evaluate_all(n_components, loader, GCNEdgeBased_model):
+	metrics = []
+	for i, data_batch in enumerate(loader):
+		print(data_batch)
+		data_batch_train = data_batch.to(device)
+		with torch.no_grad():
+			GCNEdgeBased_model.eval()
+			edge_pred = GCNEdgeBased_model(data_batch_train)
+			loss = GCNEdgeBased_model.loss(edge_pred, data_batch_train.edge_type)
 
-	adj = torch.sparse_coo_tensor(data_batch.edge_index.cpu(), edge_pred.cpu(), (len(data_batch.x), len(data_batch.x))).to_dense()
-	FX = C_Spectral(adj, n_components=50)
-	metric = ClusterEvalAll(FX, data_batch['y'].cpu().numpy())()
-	writer.add_scalar('IoU_TP', metric['IoU_TP'], 4000*i)
-	writer.add_scalar('IoU_recall', metric['IoU_recall'], 4000*i)
-	writer.add_scalar('Mode_TP', metric['Mode_TP'], 4000*i)
-	writer.add_scalar('Mode_recall', metric['Mode_recall'], 4000*i)
-	writer.add_scalar('ModeProb_TP', metric['ModeProb_TP'], 4000*i)
-	writer.add_scalar('ModeProb_recall', metric['ModeProb_recall'], 4000*i)
+		adj = torch.sparse_coo_tensor(data_batch.edge_index.cpu(), edge_pred.cpu(), (len(data_batch.x), len(data_batch.x))).to_dense()
+		FX = C_Spectral(adj, n_components=n_components)
 
-	
-	print()
-	print('final metric:')
-	print(metric)
-	print()
+		metric = ClusterEvalAll(FX, data_batch['y'].cpu().numpy())()
+		writer.add_scalar('IoU_TP', metric['IoU_TP'], 4000*i)
+		writer.add_scalar('IoU_recall', metric['IoU_recall'], 4000*i)
+		writer.add_scalar('Mode_TP', metric['Mode_TP'], 4000*i)
+		writer.add_scalar('Mode_recall', metric['Mode_recall'], 4000*i)
+		writer.add_scalar('ModeProb_TP', metric['ModeProb_TP'], 4000*i)
+		writer.add_scalar('ModeProb_recall', metric['ModeProb_recall'], 4000*i)
 
+		
+		print()
+		print('current metric:')
+		print(metric)
+		print()
+		metrics.append(metric)
+	f_metric = ClusterEvalAll.aggregate(metrics)
+	return f_metric
+
+results = {}
+for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
+	metric = evaluate_all(n_components, test_loader, GCNEdgeBased_model)
+	results[n_components] = metric
+
+with open('../results/SpectralEdge2Cluster_test.json', 'w') as f:
+	json.dump(results, f)
