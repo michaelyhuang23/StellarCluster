@@ -5,7 +5,7 @@ from torch_geometric.nn import GCNConv
 
 import sys
 sys.path.append('..')
-from tools.gnn_layers import NodeConv, EdgeConv, EdgeAttn
+from tools.gnn_layers import NodeConv, EdgeConv, NodeATN
 
 
 
@@ -55,7 +55,11 @@ class GANEdgeBased(nn.Module): # non-overlapping
     def __init__(self, input_size, similar_weight=1, regularizer=0.1):
         super().__init__()
         self.input_size = input_size
-        self.attn1 = EdgeAttn(input_size, input_size, 3)
+        self.attnN1 = NodeATN(input_size, input_size, 32)
+        self.convE1 = EdgeConv(32, input_size, 32)
+        self.attnN2 = NodeATN(32, 32, 32)
+        self.convE2 = EdgeConv(32, 32, 32)
+        self.classifier = nn.Linear(32, 1)
         self.similar_weight = similar_weight
         self.regularizer = regularizer
 
@@ -74,11 +78,9 @@ class GANEdgeBased(nn.Module): # non-overlapping
         else:
             edge_attr = (X[edge_index[1]] - X[edge_index[0]]) / edge_attr[..., None]
         X = torch.zeros_like(X)
-        X = self.attn1(X, edge_index, edge_attr)
-        X = self.dropout1(X)
+        X = self.attnN1(X, edge_index, edge_attr)
         edge_attr = self.convE1(X, edge_index, edge_attr)
-        X = self.convN2(X, edge_index, edge_attr)
-        X = self.dropout2(X)
+        X = self.attnN2(X, edge_index, edge_attr)
         edge_attr = self.convE2(X, edge_index, edge_attr)
 
         edge_pred = self.classifier(edge_attr)

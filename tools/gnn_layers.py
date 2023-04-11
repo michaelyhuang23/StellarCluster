@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-from torch.nn import Linear, ReLU, MultiheadAttention
+from torch.nn import Linear, ReLU, MultiheadAttention, Module
 from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import degree
+from torch_geometric.utils import degree, softmax
 
 class NodeConv(MessagePassing):
     def __init__(self, in_node_channels, in_edge_channels, out_node_channels):
@@ -63,9 +63,7 @@ class EdgeConv(MessagePassing):
         return out
 
 
-
-
-class FeatureEncoder(nn.Module):
+class FeatureEncoder(Module):
     def __init__(self, flen=13, d=13, n=10000):
         self.n = n
         self.d = d
@@ -103,3 +101,35 @@ class FeatureEncoder(nn.Module):
         return encoded_features
 
 
+class NodeATN(MessagePassing):
+    def __init__(self, in_node_channels, in_edge_channels, out_node_channels):
+        super().__init__(aggr='sum')  # sum aggregation
+        self.self_map = Linear(in_node_channels, out_node_channels)
+        self.pass_map = Linear(in_edge_channels, out_node_channels)
+        self.attn_map = Linear(in_node_channels, in_edge_channels)
+        self.relu = ReLU()
+
+    def reset_parameters(self):
+        self.self_map.reset_parameters()
+        self.pass_map.reset_parameters()
+
+    def forward(self, x, edge_index, edge_attr):
+        # x has shape [N, in_channels]
+        # edge_index has shape [2, E]
+
+        x_out = self.self_map(x)
+        row, col = edge_index # computing degree
+
+        x_attn = self.attn_map(x)
+        edge_alpha = torch.sum(edge_attr * x_attn[col], dim=-1)
+        edge_alpha = softmax(edge_alpha, col)  # normalize
+
+        message_received = self.propagate(edge_index, size=(x.size(0), x.size(0)), edge_attr=edge_attr * edge_alpha)
+        message_received = self.pass_map(message_received) # act on edge features
+        out = self.relu(x_out + message_received)  # ReLU(xW + sum_neighbor EW)
+
+        return out
+
+    def message(self, edge_attr):
+        # edge_attr has shape [E, out_channels]
+        return edge_attr
