@@ -116,7 +116,7 @@ class NodeATN(MessagePassing):
     def forward(self, x, edge_index, edge_attr):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
-
+        print(x)
         x_out = self.self_map(x)
         row, col = edge_index # computing degree
 
@@ -124,7 +124,7 @@ class NodeATN(MessagePassing):
         edge_alpha = torch.sum(edge_attr * x_attn[col], dim=-1)
         edge_alpha = softmax(edge_alpha, col)  # normalize
 
-        message_received = self.propagate(edge_index, size=(x.size(0), x.size(0)), edge_attr=edge_attr * edge_alpha)
+        message_received = self.propagate(edge_index, size=(x.size(0), x.size(0)), edge_attr=edge_attr * edge_alpha[...,None])
         message_received = self.pass_map(message_received) # act on edge features
         out = self.relu(x_out + message_received)  # ReLU(xW + sum_neighbor EW)
 

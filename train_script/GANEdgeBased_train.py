@@ -26,7 +26,7 @@ val_dataset_ids = [1104787, 1387186, 388476, 65777]
 def filterer(df):
     return df.loc[df['redshiftstar']<2].copy()
 
-feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar', 'xstar', 'ystar']
+feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) # 
 train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
@@ -38,7 +38,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 EPOCH = 300
 
 GCNEdgeBased_model = GANEdgeBased(len(feature_columns), regularizer=0).to(device)
-GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.001, weight_decay=1e-5)
+GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.0001, weight_decay=1e-5)
 
 def train_one_batch(model, optim, data_batch, evaluate=False):
     model.train()
