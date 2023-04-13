@@ -18,7 +18,6 @@ class NodeConv(MessagePassing):
     def forward(self, x, edge_index, edge_attr):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
-
         x = self.self_map(x)
 
         row, col = edge_index # computing degree
@@ -116,7 +115,6 @@ class NodeATN(MessagePassing):
     def forward(self, x, edge_index, edge_attr):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
-        print(x)
         x_out = self.self_map(x)
         row, col = edge_index # computing degree
 
