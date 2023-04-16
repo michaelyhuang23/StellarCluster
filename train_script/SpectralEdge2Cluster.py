@@ -40,18 +40,18 @@ test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_colu
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-GCNEdgeBased_model = torch.load('weights/GCNEdgeBased_model300new/299.pth').to(device)
+model = torch.load('weights/GANEdgeBased_model300new/299.pth').to(device)
 
 
-def evaluate_all(n_components, loader, GCNEdgeBased_model):
+def evaluate_all(n_components, loader, model):
 	metrics = []
 	for i, data_batch in enumerate(loader):
 		print(data_batch)
 		data_batch_train = data_batch.to(device)
 		with torch.no_grad():
-			GCNEdgeBased_model.eval()
-			edge_pred = GCNEdgeBased_model(data_batch_train)
-			loss = GCNEdgeBased_model.loss(edge_pred, data_batch_train.edge_type)
+			model.eval()
+			edge_pred = model(data_batch_train)
+			loss = model.loss(edge_pred, data_batch_train.edge_type)
 
 		adj = torch.sparse_coo_tensor(data_batch.edge_index.cpu(), edge_pred.cpu(), (len(data_batch.x), len(data_batch.x))).to_dense()
 		FX = C_Spectral(adj, n_components=n_components)
@@ -75,8 +75,8 @@ def evaluate_all(n_components, loader, GCNEdgeBased_model):
 
 results = {}
 for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
-	metric = evaluate_all(n_components, test_loader, GCNEdgeBased_model)
+	metric = evaluate_all(n_components, test_loader, model)
 	results[n_components] = metric
 
-with open('../results/SpectralEdge2Cluster_test.json', 'w') as f:
+with open('../results/SpectralEdge2Cluster_test_GAN.json', 'w') as f:
 	json.dump(results, f)
