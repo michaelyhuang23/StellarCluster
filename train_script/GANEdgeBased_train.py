@@ -38,7 +38,7 @@ val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
 EPOCH = 300
 
 GCNEdgeBased_model = GANEdgeBased(len(feature_columns), regularizer=0).to(device)
-GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.0001, weight_decay=1e-5)
+GCNEdgeBased_optim = Adam(GCNEdgeBased_model.parameters(), lr=0.0003, weight_decay=1e-5)
 
 def train_one_batch(model, optim, data_batch, evaluate=False):
     model.train()

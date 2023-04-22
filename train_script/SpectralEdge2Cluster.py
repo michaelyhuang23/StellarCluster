@@ -40,7 +40,7 @@ test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_colu
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-model = torch.load('weights/GANEdgeBased_model300new/299.pth').to(device)
+model = torch.load('weights/GANEdgeBased_model300new/263.pth').to(device)
 
 
 def evaluate_all(n_components, loader, model):
