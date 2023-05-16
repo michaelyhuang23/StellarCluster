@@ -32,15 +32,14 @@ def filterer(df):
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 position_columns = ['xstar', 'ystar', 'zstar']
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #
-train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)  # it's already pre-shuffled. We can't do shuffling here because it must generate things in sequence.
-val_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=val_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
+
 test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=test_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-model = torch.load('weights/GANEdgeBased_model300new/263.pth').to(device)
+model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
+model.load_state_dict(torch.load('weights/GANOrigEdgeBased_model300new/100.pth')['model_state_dict'])
+
 
 
 def evaluate_all(n_components, loader, model):
@@ -78,5 +77,5 @@ for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
 	metric = evaluate_all(n_components, test_loader, model)
 	results[n_components] = metric
 
-with open('../results/SpectralEdge2Cluster_test_GAN.json', 'w') as f:
+with open('../results/SpectralEdge2Cluster_test_GANOrig_100.json', 'w') as f:
 	json.dump(results, f)

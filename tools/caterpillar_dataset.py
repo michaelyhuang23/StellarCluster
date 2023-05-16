@@ -7,7 +7,7 @@ import torch
 from torch_geometric.data import Dataset, Data
 import torch_geometric.transforms as T
 import random
-
+from datetime import datetime
 
 class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific file structure. Under 'root' there is 'raw' and 'processed'
     def __init__(self, root, stellar_category, feature_columns, position_columns, use_dataset_ids=None, data_filter=None, repeat=10, label_column=None, transform=None, pre_transform=None, pre_filter=None):
@@ -17,6 +17,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
                     796175, 94638, 95289, 1079897, 1232423, 1599902, 196078]
         if use_dataset_ids is not None:
             self.dataset_ids = use_dataset_ids
+        random.seed(datetime.now().timestamp())
         random.shuffle(self.dataset_ids)
         self.stellar_category = stellar_category
         self.feature_columns = feature_columns
@@ -37,7 +38,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
 
     @property
     def processed_file_names(self):
-        return [f'processed_{i}_{self.stellar_category}.pt' for i in range(len(self.dataset_ids))]
+        return [f'processed_{file_id}_{self.stellar_category}.pt' for file_id in self.dataset_ids]
 
     def process(self):
         for idx, raw_path in enumerate(self.raw_paths):
@@ -65,7 +66,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
                 data = self.pre_transform(data)
 
 
-            torch.save(data, os.path.join(self.processed_dir, f'processed_{idx}_{self.stellar_category}.pt'))
+            torch.save(data, os.path.join(self.processed_dir, self.processed_file_names[idx]))
 
     def filter_clusters(self, data, filter_size):  # we will do the zeroing later
         occurrences = torch.bincount(data['y'])
@@ -95,7 +96,7 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
 
     def get(self, idx):
         if idx % self.repeat == 0:
-            self.current_data = torch.load(os.path.join(self.processed_dir, f'processed_{idx//self.repeat}_{self.stellar_category}.pt'))
+            self.current_data = torch.load(os.path.join(self.processed_dir, self.processed_file_names[idx//self.repeat]))
         data = self.sample_space(self.current_data, radius=0.01, radius_sun=0.0082, zsun_range=0.016/1000, filter_size=10)
         if self.transform is not None:
             data = self.transform(data)

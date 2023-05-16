@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torch.nn import Linear, ReLU, MultiheadAttention, Module
+from torch.nn import Linear, ReLU, MultiheadAttention, Module, ModuleList
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import degree, softmax
 
@@ -125,6 +125,45 @@ class NodeATN(MessagePassing):
         message_received = self.propagate(edge_index, size=(x.size(0), x.size(0)), edge_attr=edge_attr * edge_alpha[...,None])
         message_received = self.pass_map(message_received) # act on edge features
         out = self.relu(x_out + message_received)  # ReLU(xW + sum_neighbor EW)
+
+        return out
+
+    def message(self, edge_attr):
+        # edge_attr has shape [E, out_channels]
+        return edge_attr
+
+
+class NodeATNOrig(MessagePassing):
+    def __init__(self, in_node_channels, in_edge_channels, out_node_channels, heads):
+        super().__init__(aggr='sum')  # sum aggregation
+        self.heads = heads
+        self.node_attn_maps = ModuleList([Linear(in_node_channels, out_node_channels // heads) for i in range(heads)])
+        self.edge_attn_maps = ModuleList([Linear(in_edge_channels, out_node_channels // heads) for i in range(heads)])
+        self.combinator = Linear(out_node_channels * 2 // heads, 1)
+        self.relu = ReLU()
+
+    def reset_parameters(self):
+        self.node_attn_maps.reset_parameters()
+        self.edge_attn_maps.reset_parameters()
+        self.combinator.reset_parameters()
+
+    def forward(self, x, edge_index, edge_attr):
+        # x has shape [N, in_channels]
+        # edge_index has shape [2, E]
+        row, col = edge_index # computing degree
+
+        x_heads = [linear_map(x) for linear_map in self.node_attn_maps]
+        e_heads = [linear_map(edge_attr) for linear_map in self.edge_attn_maps]
+
+        e_alphas = [self.combinator(torch.cat([x_head[col], e_head], dim=-1)) for x_head, e_head in zip(x_heads, e_heads)]
+        e_alphas = [softmax(e_alpha, col) for e_alpha in e_alphas]
+
+        e_heads = [e_head * e_alpha for e_head, e_alpha in zip(e_heads, e_alphas)]
+
+        messages_received = [self.propagate(edge_index, size=(x.size(0), x.size(0)), edge_attr=e_head) for e_head in e_heads]
+        messages_received = [self.relu(message) for message in messages_received]
+
+        out = torch.cat(messages_received, dim=-1)
 
         return out
 
