@@ -14,6 +14,8 @@ class SampleGaiaDataset(Dataset):  # Dataset enforces a very specific file struc
         self.feature_columns = feature_columns
         self.sample_size = sample_size
         self.num_samples = num_samples
+        self.feature_divs = None
+        self.features_subs = None
         super().__init__(root, transform, pre_transform, False) # no pre-filter
 
     @property
@@ -24,16 +26,27 @@ class SampleGaiaDataset(Dataset):  # Dataset enforces a very specific file struc
     def processed_file_names(self):
         return [f'processed_{idx}_gaia_10kpc.pt' for idx in range(self.num_samples)]
 
+    def get_normalizer(self):
+        raw_path = self.raw_paths[0]
+        with open(raw_path[:-3]+'_norm.json', 'r') as f:
+            df_norm = json.load(f)
+        self.features_subs = torch.tensor([df_norm['mean'][feature] for feature in self.feature_columns])
+        self.feature_divs = torch.tensor([df_norm['std'][feature] for feature in self.feature_columns])
+
+    def de_normalize(self, X):
+        if self.feature_divs is not None:
+            return X * self.feature_divs
+        else:
+            self.get_normalizer()
+            return X * self.feature_divs
+
     def process(self):
         raw_path = self.raw_paths[0]
         df = pd.read_hdf(os.path.join(raw_path), key='star')
-        with open(raw_path[:-3]+'_norm.json', 'r') as f:
-            df_norm = json.load(f)
-        features_subs = torch.tensor([df_norm['mean'][feature] for feature in self.feature_columns])
-        feature_divs = torch.tensor([df_norm['std'][feature] for feature in self.feature_columns])
+        self.get_normalizer()
         features = torch.tensor(df[self.feature_columns].to_numpy()).float()
         # self.features -= self.features_subs[None,...]     # we don't center data
-        features /= feature_divs[None,...]
+        features /= self.feature_divs[None,...]
 
         for idx in range(self.num_samples):
             sampled_ids = np.random.choice(len(features), self.sample_size)
