@@ -29,7 +29,8 @@ val_dataset_ids = [1104787, 1387186, 388476, 65777]
 def filterer(df):
     return df.loc[df['redshiftstar']<2].copy()
 
-feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
+#feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
+feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'vstar', 'vzstar', 'vrstar', 'vphistar']
 position_columns = ['xstar', 'ystar', 'zstar']
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #
 
@@ -38,7 +39,7 @@ test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
 model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
-model.load_state_dict(torch.load('weights/GANOrigEdgeBased_model300new/100.pth')['model_state_dict'])
+model.load_state_dict(torch.load('weights/GANOrigEdgeBased_model300new_gaia_mom_vel/250.pth')['model_state_dict'])
 
 
 
@@ -77,5 +78,5 @@ for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
 	metric = evaluate_all(n_components, test_loader, model)
 	results[n_components] = metric
 
-with open('../results/SpectralEdge2Cluster_test_GANOrig_100.json', 'w') as f:
+with open('../results/SpectralEdge2Cluster_test_GANOrig_mom_vel_250.json', 'w') as f:
 	json.dump(results, f)
