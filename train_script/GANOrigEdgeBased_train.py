@@ -28,7 +28,8 @@ def filterer(df):
 
 #feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 #feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'vstar', 'vzstar', 'vrstar', 'vphistar']
-feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar']
+#feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar']
+feature_columns = ['vstar', 'vzstar', 'vrstar', 'vphistar']
 position_columns = ['xstar', 'ystar', 'zstar']
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) # 
 train_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=train_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
@@ -100,7 +101,7 @@ for epoch in range(EPOCH):
             'optimizer_state_dict': optim.state_dict(),
             'loss': avg_loss,
             'accuracy': validation_acc['accuracy']
-            }, f'weights/GANOrigEdgeBased_model300new_gaia_mom/{epoch}.pth')
+            }, f'weights/GANOrigEdgeBased_model300new_gaia_vel/{epoch}.pth')
 
 
 
