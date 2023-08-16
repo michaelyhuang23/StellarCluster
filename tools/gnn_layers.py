@@ -12,8 +12,8 @@ class NodeConv(MessagePassing):
         self.relu = ReLU()
 
     def reset_parameters(self):
-    	self.self_map.reset_parameters()
-    	self.pass_map.reset_parameters()
+        self.self_map.reset_parameters()
+        self.pass_map.reset_parameters()
 
     def forward(self, x, edge_index, edge_attr):
         # x has shape [N, in_channels]

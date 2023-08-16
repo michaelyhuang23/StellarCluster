@@ -15,7 +15,7 @@ from tools.cluster_functions import *
 
 
 writer = SummaryWriter()
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+device = torch.device('cpu') 
 
 train_dataset_ids = [1130025, 1195075, 1195448, 1232164, 1268839, 1292085,\
                     1354437, 1422331, 1422429, 1599988, 1631506, 1631582, 1725139,\
@@ -29,34 +29,22 @@ val_dataset_ids = [1104787, 1387186, 388476, 65777]
 def filterer(df):
     return df.loc[df['redshiftstar']<2].copy()
 
-#feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
-feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'vstar', 'vzstar', 'vrstar', 'vphistar']
+feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
+#feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'vstar', 'vzstar', 'vrstar', 'vphistar']
 position_columns = ['xstar', 'ystar', 'zstar']
-data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #
 
-test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=test_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
+test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=test_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id')
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
-model.load_state_dict(torch.load('weights/GANOrigEdgeBased_model300new_gaia_mom_vel/250.pth')['model_state_dict'])
-
-
-
-def evaluate_all(n_components, loader, model):
+def evaluate_all(n_components, loader):
 	metrics = []
 	for i, data_batch in enumerate(loader):
 		print(data_batch)
 		data_batch_train = data_batch.to(device)
-		with torch.no_grad():
-			model.eval()
-			edge_pred = model(data_batch_train)
-			loss = model.loss(edge_pred, data_batch_train.edge_type)
-
-		adj = torch.sparse_coo_tensor(data_batch.edge_index.cpu(), edge_pred.cpu(), (len(data_batch.x), len(data_batch.x))).to_dense()
-		FX = C_Spectral(adj, n_components=n_components)
-
-		metric = ClusterEvalAll(FX, data_batch['y'].cpu().numpy())()
+		labels = C_GaussianMixture(data_batch_train['x'], n_components=n_components) 
+		# more work needed here
+		metric = ClusterEvalAll(labels, data_batch['y'].cpu().numpy())()
 		writer.add_scalar('IoU_TP', metric['IoU_TP'], 4000*i)
 		writer.add_scalar('IoU_recall', metric['IoU_recall'], 4000*i)
 		writer.add_scalar('Mode_TP', metric['Mode_TP'], 4000*i)
@@ -74,9 +62,9 @@ def evaluate_all(n_components, loader, model):
 	return f_metric
 
 results = {}
-for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
-	metric = evaluate_all(n_components, test_loader, model)
+for n_components in [2,3,4,5,7,10,20,40,60,80,120,160,200]:
+	metric = evaluate_all(n_components, test_loader)
 	results[n_components] = metric
 
-with open('../results/SpectralEdge2Cluster_test_GANOrig_mom_vel_250.json', 'w') as f:
+with open('../results/gaussian_mixture_full.json', 'w') as f:
 	json.dump(results, f)
