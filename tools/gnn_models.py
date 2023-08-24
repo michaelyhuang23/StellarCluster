@@ -11,7 +11,7 @@ from tools.gnn_layers import NodeConv, EdgeConv, NodeATN, NodeATNOrig
 
 
 class GCNEdgeBased(nn.Module): # non-overlapping
-    def __init__(self, input_size, similar_weight=1, regularizer=0.1):
+    def __init__(self, input_size, regularizer=0.1):
         super().__init__()
         self.input_size = input_size
         self.convN1 = NodeConv(input_size, input_size, 32)
@@ -21,17 +21,16 @@ class GCNEdgeBased(nn.Module): # non-overlapping
         self.dropout2 = nn.Dropout(p=0.0)
         self.convE2 = EdgeConv(32, 32, 32)
         self.classifier = nn.Linear(32, 1)
-        self.similar_weight = similar_weight
         self.regularizer = regularizer
 
     def regularize(self, edge_pred):
         return -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25 * self.regularizer
 
-    def loss(self, edge_pred, edge_type):
+    def loss(self, edge_pred, edge_type, similar_weight=1):
         if edge_type.dtype != torch.float32:
             edge_type = edge_type.float()
         weight = torch.ones_like(edge_type)
-        weight[edge_type > 0.5] *= self.similar_weight
+        weight[edge_type > 0.5] *= similar_weight
         return F.binary_cross_entropy(edge_pred, edge_type, weight=weight) + self.regularize(edge_pred)
 
     def forward(self, data):
@@ -54,7 +53,7 @@ class GCNEdgeBased(nn.Module): # non-overlapping
 
 
 class GANEdgeBased(nn.Module): # non-overlapping
-    def __init__(self, input_size, similar_weight=1, regularizer=0.1):
+    def __init__(self, input_size, regularizer=0.1):
         super().__init__()
         self.input_size = input_size
         self.attnN1 = NodeATN(input_size, input_size, 32)
@@ -62,16 +61,17 @@ class GANEdgeBased(nn.Module): # non-overlapping
         self.attnN2 = NodeATN(32, 32, 32)
         self.convE2 = EdgeConv(32, 32, 32)
         self.classifier = nn.Linear(32, 1)
-        self.similar_weight = similar_weight
         self.regularizer = regularizer
 
     def regularize(self, edge_pred):
         return -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25 * self.regularizer
 
-    def loss(self, edge_pred, edge_type):
+    def loss(self, edge_pred, edge_type, similar_weight=1):
         if edge_type.dtype != torch.float32:
             edge_type = edge_type.float()
-        return F.binary_cross_entropy(edge_pred, edge_type) + self.regularize(edge_pred)
+        weight = torch.ones_like(edge_type)
+        weight[edge_type > 0.5] *= similar_weight
+        return F.binary_cross_entropy(edge_pred, edge_type, weight=weight) + self.regularize(edge_pred)
 
     def forward(self, data):
         X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
@@ -91,7 +91,7 @@ class GANEdgeBased(nn.Module): # non-overlapping
 
 
 class GANOrigEdgeBased(nn.Module): # non-overlapping
-    def __init__(self, input_size, similar_weight=1, regularizer=0.1):
+    def __init__(self, input_size, regularizer=0.1):
         super().__init__()
         self.input_size = input_size
         self.attnN1 = NodeATNOrig(input_size, input_size, 32, 4)
@@ -99,16 +99,17 @@ class GANOrigEdgeBased(nn.Module): # non-overlapping
         self.attnN2 = NodeATNOrig(32, 32, 32, 4)
         self.convE2 = EdgeConv(32, 32, 32)
         self.classifier = nn.Linear(32, 1)
-        self.similar_weight = similar_weight
         self.regularizer = regularizer
 
     def regularize(self, edge_pred):
         return -torch.mean((edge_pred-torch.mean(edge_pred))**4)**0.25 * self.regularizer
 
-    def loss(self, edge_pred, edge_type):
+    def loss(self, edge_pred, edge_type, similar_weight=1):
         if edge_type.dtype != torch.float32:
             edge_type = edge_type.float()
-        return F.binary_cross_entropy(edge_pred, edge_type) + self.regularize(edge_pred)
+        weight = torch.ones_like(edge_type)
+        weight[edge_type > 0.5] *= similar_weight
+        return F.binary_cross_entropy(edge_pred, edge_type, weight=weight) + self.regularize(edge_pred)
 
     def forward(self, data):
         X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
