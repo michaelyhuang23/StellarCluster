@@ -30,7 +30,9 @@ class GCNEdgeBased(nn.Module): # non-overlapping
     def loss(self, edge_pred, edge_type):
         if edge_type.dtype != torch.float32:
             edge_type = edge_type.float()
-        return F.binary_cross_entropy(edge_pred, edge_type) + self.regularize(edge_pred)
+        weight = torch.ones_like(edge_type)
+        weight[edge_type > 0.5] *= self.similar_weight
+        return F.binary_cross_entropy(edge_pred, edge_type, weight=weight) + self.regularize(edge_pred)
 
     def forward(self, data):
         X, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
