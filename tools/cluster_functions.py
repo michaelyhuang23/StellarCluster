@@ -16,8 +16,8 @@ def C_HDBSCAN(data, min_cluster_size=5, min_samples=None, cluster_selection_meth
     clusterer.fit(data)
     return clusterer.labels_
 
-def C_Spectral(adj, n_components=30):
-    clusterer = SpectralClustering(n_components, affinity='precomputed', assign_labels='discretize')
+def C_Spectral(adj, n_components=30, eigen_solver=None):
+    clusterer = SpectralClustering(n_components, affinity='precomputed', assign_labels='discretize', eigen_solver=eigen_solver)
     clusterer.fit(adj)
     return clusterer.labels_
 

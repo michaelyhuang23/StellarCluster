@@ -12,7 +12,9 @@ from tools.caterpillar_dataset import NormalCaterpillarDataset
 from tools.gnn_models import GCNEdgeBased
 from tools.evaluation_metric import *
 from tools.cluster_functions import *
-
+from scipy.sparse import csr_array, csr_matrix
+from torch_geometric.utils import remove_self_loops
+from torcheval.metrics.functional import binary_accuracy
 
 writer = SummaryWriter()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -33,28 +35,31 @@ def filterer(df):
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 #feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'vstar', 'vzstar', 'vrstar', 'vphistar']
 position_columns = ['xstar', 'ystar', 'zstar']
-data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #
+data_transforms = T.Compose(transforms=[T.KNNGraph(k=300,force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #, T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})
+
 
 test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=test_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
-model.load_state_dict(torch.load('../train_script/weights/GANOrigEdgeBased_model300new/299.pth', map_location=device)['model_state_dict'])
+model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device)
+model.load_state_dict(torch.load('../train_script/weights/GCNEdgeBased_model300new/299.pth', map_location=device).state_dict())
 
 
 
 def evaluate_all(n_components, loader, model):
 	metrics = []
 	for i, data_batch in enumerate(loader):
-		print(data_batch)
 		data_batch_train = data_batch.to(device)
 		with torch.no_grad():
 			model.eval()
 			edge_pred = model(data_batch_train)
+			print(f'acc: {binary_accuracy(edge_pred, data_batch_train.edge_type.long())}')
+			print(torch.sum((edge_pred>0.5).long())/len(edge_pred))
 			loss = model.loss(edge_pred, data_batch_train.edge_type)
-		edge_pred = -torch.log(torch.clamp(1-edge_pred, min=0.0001, max=0.9999))   # for the log similarity measure
-		adj = torch.sparse_coo_tensor(data_batch.edge_index.cpu(), edge_pred.cpu(), (len(data_batch.x), len(data_batch.x))).to_dense()
+		#adj = csr_matrix((data_batch_train.edge_attr.numpy(), (data_batch_train.edge_index[0].numpy(), data_batch_train.edge_index[1].numpy())), shape=(len(data_batch_train.x), len(data_batch_train.x)))
+		adj = torch.sparse_coo_tensor(data_batch_train.edge_index.cpu(), edge_pred.cpu(), (len(data_batch_train.x), len(data_batch_train.x))).to_dense()
+		adj = (adj + adj.T)/2
 		FX = C_Spectral(adj, n_components=n_components)
 
 		metric = ClusterEvalAll(FX, data_batch['y'].cpu().numpy())()
@@ -79,5 +84,5 @@ for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
 	metric = evaluate_all(n_components, test_loader, model)
 	results[n_components] = metric
 
-with open('../results/SpectralEdge2Cluster_test_GANOrig_log.json', 'w') as f:
+with open('../results/SpectralEdge2Cluster_test_redo.json', 'w') as f:
 	json.dump(results, f)
