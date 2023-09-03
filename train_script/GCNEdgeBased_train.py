@@ -13,6 +13,7 @@ from tools.evaluation_metric import *
 
 writer = SummaryWriter()
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+print(f'running on {device}')
 
 train_dataset_ids = [1130025, 1195075, 1195448, 1232164, 1268839, 1292085,\
                     1354437, 1422331, 1422429, 1599988, 1631506, 1631582, 1725139,\
@@ -93,8 +94,8 @@ for epoch in range(EPOCH):
 
     torch.save({
             'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optim.state_dict(),
+            'model_state_dict': GCNEdgeBased_model.state_dict(),
+            'optimizer_state_dict': GCNEdgeBased_optim.state_dict(),
             'loss': avg_loss,
             'recall': validation_acc['recall']
             }, f'weights/GCNEdgeBased_model300_Aug_24/{epoch}.pth')
