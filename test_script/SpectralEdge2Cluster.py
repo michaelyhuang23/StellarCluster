@@ -35,15 +35,14 @@ def filterer(df):
 feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'rstar', 'vstar', 'vxstar', 'vystar', 'vzstar', 'vrstar', 'vphistar', 'phistar', 'zstar']
 #feature_columns = ['estar', 'jrstar', 'jzstar', 'jphistar', 'vstar', 'vzstar', 'vrstar', 'vphistar']
 position_columns = ['xstar', 'ystar', 'zstar']
-data_transforms = T.Compose(transforms=[T.KNNGraph(k=300,force_undirected=True), T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) #, T.GDC(sparsification_kwargs={'avg_degree':300, 'method':'threshold'})
-
+data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True, loop=False), T.GDC(normalization_out='sym', self_loop_weight=None, sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) # 
 
 test_dataset = NormalCaterpillarDataset('../data/caterpillar', '0', feature_columns, position_columns, use_dataset_ids=test_dataset_ids, data_filter=filterer, repeat=10, label_column='cluster_id', transform=data_transforms)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
-model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
-model.load_state_dict(torch.load('../train_script/weights/GANOrigEdgeBased_model300new/290.pth', map_location=device)['model_state_dict'])
+model = GCNEdgeBased(len(feature_columns), regularizer=0).to(device)
+model.load_state_dict(torch.load('../train_script/weights/GCNEdgeBased_model300_Aug_24/299.pth', map_location=device)['model_state_dict'])
 
 
 
@@ -86,5 +85,5 @@ for n_components in [5, 10, 20, 30, 40, 50, 60, 70, 80, 100]:
 	metric = evaluate_all(n_components, test_loader, model)
 	results[n_components] = metric
 
-with open('../results/SpectralEdge2Cluster_test_GANOrig_redo.json', 'w') as f:
+with open('../results/SpectralEdge2Cluster_test_GCN_retrain_299.json', 'w') as f:
 	json.dump(results, f)
