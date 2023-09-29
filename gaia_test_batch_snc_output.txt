@@ -1,0 +1,8 @@
+/home/gridsan/yhuang1/StellarCluster
+/var/spool/slurmd/job23930736/slurm_script: line 10: module: command not found
+Traceback (most recent call last):
+  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_batch_snc.py", line 22, in <module>
+    from tools.cluster_functions import *
+  File "/home/gridsan/yhuang1/StellarCluster/tools/cluster_functions.py", line 8, in <module>
+    from hdbscan import HDBSCAN
+ModuleNotFoundError: No module named 'hdbscan'
