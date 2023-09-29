@@ -5,7 +5,7 @@ import torch
 from torch.optim import SGD, Adam
 from torch_geometric.loader import DataLoader
 import torch_geometric.transforms as T
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 from tools.caterpillar_dataset import NormalCaterpillarDataset
 from tools.gnn_models import GCNEdgeBased
 from tools.evaluation_metric import *
