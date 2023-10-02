@@ -1,0 +1,9 @@
+/home/gridsan/yhuang1/StellarCluster
+/var/spool/slurmd/job23939226/slurm_script: line 10: module: command not found
+/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py:248: UserWarning: Array is not symmetric, and will be converted to symmetric by average with its transpose.
+  adjacency = check_symmetric(adjacency)
+['cluster 0', 'cluster 2', 'cluster 1', 'cluster 3', 'cluster 4']
+Traceback (most recent call last):
+  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_full_snc.py", line 100, in <module>
+    sns.scatterplot(x=X[:,9], y=X[:,10], hue=clusters, style=clusters, s=10)
+IndexError: index 9 is out of bounds for dimension 1 with size 4
