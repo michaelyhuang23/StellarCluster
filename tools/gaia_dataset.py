@@ -47,16 +47,18 @@ class SampleGaiaDataset(Dataset):  # Dataset enforces a very specific file struc
         features = torch.tensor(df[self.feature_columns].to_numpy()).float()
         # self.features -= self.features_subs[None,...]     # we don't center data
         features /= self.feature_divs[None,...]
+        stellar_ids = torch.tensor(df['source_id'].to_numpy()).long()
 
         if len(features) <= self.sample_size:
-            data = Data(x=features, edge_index=torch.tensor([[],[]]).long(), y=None, pos=features)  # pos decides what KNN uses
+            data = Data(x=features, edge_index=torch.tensor([[],[]]).long(), y=None, pos=features, ids=stellar_ids)  # pos decides what KNN uses
             if self.pre_transform is not None:  # we should build knn here instead of at transform
                 data = self.pre_transform(data)
             torch.save(data, os.path.join(self.processed_dir, f'processed_0_gaia_10kpc.pt'))
         else: 
             for idx in range(self.num_samples):
-                sampled_ids = np.random.choice(len(features), self.sample_size, replace=False)
-                data = Data(x=features[sampled_ids], edge_index=torch.tensor([[],[]]).long(), y=None, pos=features[sampled_ids], sample_indices=sampled_ids)  # pos decides what KNN uses
+                sampled_idx = np.random.choice(len(features), self.sample_size, replace=False)
+                sampled_stellar_ids = stellar_ids[sampled_idx]
+                data = Data(x=features[sampled_idx], edge_index=torch.tensor([[],[]]).long(), y=None, pos=features[sampled_idx], ids=sampled_stellar_ids, sampled_idx=sampled_idx)  # pos decides what KNN uses
                 if self.pre_transform is not None:  # we should build knn here instead of at transform
                     data = self.pre_transform(data)
                 torch.save(data, os.path.join(self.processed_dir, f'processed_{idx}_gaia_10kpc.pt'))
