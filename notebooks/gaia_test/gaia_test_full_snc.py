@@ -47,9 +47,9 @@ graph = next(iter(gaia_loader))
 FX = evaluate(5, graph, model)
 
 labels = pd.DataFrame(FX, columns=['cluster_id'])
-labels['source_id'] = graph.ids
+labels['source_id'] = graph.ids.cpu().numpy()
 if 'sampled_idx' in graph.keys():
-    labels['sampled_idx'] = graph.sampled_idx
+    labels['sampled_idx'] = graph.sampled_idx.cpu().numpy()
 labels.to_csv('../../results/cluster_files/gaia_full_snc_mom.csv', index=False)
 
 #clusters = [f'cluster {idx}' for idx in FX]
