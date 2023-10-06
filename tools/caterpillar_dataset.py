@@ -50,6 +50,8 @@ class NormalCaterpillarDataset(Dataset):  # Dataset enforces a very specific fil
                 df_norm = json.load(f)
             features_subs = torch.tensor([df_norm['mean'][feature] for feature in self.feature_columns])
             feature_divs = torch.tensor([df_norm['std'][feature] for feature in self.feature_columns])
+            if 'estar' in self.feature_columns:
+                df['estar'] -= df_norm['mean']['estar'] # special treatment for estar
             features = torch.tensor(df[self.feature_columns].to_numpy()).float()
             # self.features -= self.features_subs[None,...]     # we don't center data
             features /= feature_divs[None,...]
