@@ -40,7 +40,7 @@ def evaluate(graph, model):
         edge_pred = model(graph)
     edge_index = graph.sampled_idx[graph.edge_index].cpu()
     adj = csr_matrix((edge_pred.cpu(),edge_index), shape=(graph.total_size, graph.total_size)) 
-    return adj, graph.sampled_idx, graph.ids
+    return adj, graph.sampled_idx.cpu().numpy(), graph.ids.cpu().numpy()
 
 # %%
 t_adj = None

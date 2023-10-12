@@ -59,7 +59,7 @@ class SampleGaiaDataset(Dataset):  # Dataset enforces a very specific file struc
             torch.save(data, os.path.join(self.processed_dir, f'processed_0_gaia_10kpc.pt'))
         else: 
             for idx in range(self.num_samples):
-                sampled_idx = np.random.choice(len(features), self.sample_size, replace=False)
+                sampled_idx = torch.tensor(np.random.choice(len(features), self.sample_size, replace=False))
                 sampled_stellar_ids = stellar_ids[sampled_idx]
                 data = Data(x=features[sampled_idx], edge_index=torch.tensor([[],[]]).long(), y=None, pos=features[sampled_idx], ids=sampled_stellar_ids, sampled_idx=sampled_idx, total_size=len(features))  # pos decides what KNN uses
                 if self.pre_transform is not None:  # we should build knn here instead of at transform
