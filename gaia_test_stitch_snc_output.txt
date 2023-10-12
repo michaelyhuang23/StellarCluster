@@ -1,0 +1,23 @@
+/home/gridsan/yhuang1/StellarCluster
+/var/spool/slurmd/job24007938/slurm_script: line 10: module: command not found
+Processing...
+Done!
+Traceback (most recent call last):
+  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/torch_geometric/data/storage.py", line 79, in __getattr__
+    return self[key]
+  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/torch_geometric/data/storage.py", line 104, in __getitem__
+    return self._mapping[key]
+KeyError: 'sample_indices'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_stitch_snc.py", line 51, in <module>
+    adj, sample_indices, ids = evaluate(graph, model)
+  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_stitch_snc.py", line 41, in evaluate
+    edge_index = graph.sample_indices[graph.edge_index].cpu()
+  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/torch_geometric/data/data.py", line 441, in __getattr__
+    return getattr(self._store, key)
+  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/torch_geometric/data/storage.py", line 81, in __getattr__
+    raise AttributeError(
+AttributeError: 'GlobalStorage' object has no attribute 'sample_indices'
