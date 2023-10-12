@@ -19,7 +19,7 @@ from tools.cluster_functions import *
 writer = SummaryWriter()
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-feature_columns = ['Etot', 'JR', 'Jz', 'Jphi', 'RGC', 'Vtot', 'U', 'V', 'W', 'vr', 'vphi', 'PhiGC', 'ZGC']
+feature_columns = ['Etot', 'JR', 'Jz', 'Jphi'] #, 'Vtot','W', 'vr', 'vphi'] #, 'RGC', 'Vtot', 'U', 'V', 'W', 'vr', 'vphi', 'PhiGC', 'ZGC']
 position_columns = ['XGC', 'YGC', 'ZGC']
 
 # %%
@@ -38,98 +38,106 @@ def evaluate(graph, model):
     with torch.no_grad():
         model.eval()
         edge_pred = model(graph)
-    return edge_pred
-    #adj = csr_matrix((edge_pred.cpu(),graph.edge_index.cpu()), shape=(len(graph.x), len(graph.x)))    
-    #FX = C_Spectral(adj, n_components=n_components)
-    #return FX
+    edge_index = graph.sample_indices[graph.edge_index].cpu()
+    adj = csr_matrix((edge_pred.cpu(),edge_index), shape=(graph.total_size, graph.total_size)) 
+    return adj, graph.sample_indices, graph.ids
 
 # %%
-t_edge_index = []
-t_edge_pred = []
+t_adj = None
+stellar_ids = None
 for graph in gaia_loader:
-    edge_pred = evaluate(graph, model)
-    edge_index = graph.sample_indices[graph.edge_index]
-    t_edge_index.append(edge_index)
-    t_edge_pred.append(edge_pred)
+    if stellar_ids is None: 
+        stellar_ids = np.zeros((graph.total_size), dtype=np.int64)
+    adj, sample_indices, ids = evaluate(graph, model)
+    stellar_ids[sample_indices] = ids
+    if t_adj is None:
+        t_adj = adj
+    else:
+        t_adj = t_adj + adj
 
 # perform clustering
+n_components = 5
+FX = C_Spectral(t_adj, n_components=n_components)
 
 
-clusters = [f'cluster {idx}' for idx in FX]
+labels = pd.DataFrame(FX, columns=['cluster_id'])
+labels['source_id'] = stellar_ids
+labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom.csv', index=False)
 
-# %%
-import seaborn as sns
-import matplotlib.pyplot as plt
-sns.set_palette(sns.color_palette("colorblind"))
-
-# %%
-local_graph = graph.to('cpu')
-X = gaia_dataset.de_normalize(local_graph.x)
-
-# %%
-from collections import Counter
-counts = Counter(clusters).most_common()
-top2 = [key for (key, c) in counts[:]]
-print(top2)
-
-# %%
-X = X[np.isin(clusters, top2)]
-clusters = [cluster for cluster in clusters if cluster in top2]
-
-# %%
-df_x = pd.DataFrame(X, columns = feature_columns)
-
-
-# %%
-fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(15, 10))
-axs = axs.flatten()
-sns.scatterplot(data=df_x, x='Jphi', y='Etot', hue=clusters, style=clusters, s=10, ax=axs[0])
-sns.scatterplot(data=df_x, x='vr', y='vphi', hue=clusters, style=clusters, s=10, ax=axs[1])
-sns.scatterplot(data=df_x, x='vr', y='W', hue=clusters, style=clusters, s=10, ax=axs[2])
-J = np.sqrt(X[:,3]**2 + X[:,2]**2 + X[:,1]**2)
-sns.scatterplot(x=X[:,3]/J, y=(X[:,2]-X[:,1])/J, hue=clusters, style=clusters, s=10, ax=axs[3])
-sns.scatterplot(data=df_x, x='JR', y='Jphi', hue=clusters, style=clusters, s=10, ax=axs[4])
-sns.scatterplot(data=df_x, x='JR', y='Jz', hue=clusters, style=clusters, s=10, ax=axs[5])
-fig.savefig('../../gaia_full_snc.png')
-
-# %%
-fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(15, 10))
-axs = axs.flatten()
-sns.scatterplot(data=df_x, x='Jphi', y='Etot', hue=clusters, style=clusters, s=10, ax=axs[0])
-J = np.sqrt(X[:,3]**2 + X[:,2]**2 + X[:,1]**2)
-sns.scatterplot(x=X[:,3]/J, y=(X[:,2]-X[:,1])/J, hue=clusters, style=clusters, s=10, ax=axs[3])
-sns.scatterplot(data=df_x, x='JR', y='Jphi', hue=clusters, style=clusters, s=10, ax=axs[4])
-sns.scatterplot(data=df_x, x='JR', y='Jz', hue=clusters, style=clusters, s=10, ax=axs[5])
-fig.savefig('../../gaia_full_snc.png')
-
-# %%
-sns.scatterplot(x=X[:,9], y=X[:,10], hue=clusters, style=clusters, s=10)
-
-# %%
-J = np.sqrt(X[:,3]**2 + X[:,2]**2 + X[:,1]**2)
-ax = sns.scatterplot(x=X[:,3]/J, y=(X[:,2]-X[:,1])/J, hue=clusters, style=clusters, s=10)
-
-# %%
-ax = sns.scatterplot(x=X[:,1], y=X[:,2], hue=clusters, style=clusters, s=10)
-ax.set(xlim=[0,20000])
-
-# %%
-ax = sns.scatterplot(x=X[:,4], y=X[:,12], hue=clusters, style=clusters, s=10)
-
-# %%
-POS = [X[:,4]*torch.cos(X[:,11]),X[:,4]*torch.sin(X[:,11]),X[:,12]]
-ax = sns.scatterplot(x=POS[0], y=POS[1], hue=clusters, style=clusters, s=10)
-
-# %%
-ax = sns.scatterplot(x=X[:,11], y=X[:,4], hue=clusters, style=clusters, s=10)
-
-# %%
-
-
-# %%
-
-
-# %%
+#
+## %%
+#import seaborn as sns
+#import matplotlib.pyplot as plt
+#sns.set_palette(sns.color_palette("colorblind"))
+#
+## %%
+#local_graph = graph.to('cpu')
+#X = gaia_dataset.de_normalize(local_graph.x)
+#
+## %%
+#from collections import Counter
+#counts = Counter(clusters).most_common()
+#top2 = [key for (key, c) in counts[:]]
+#print(top2)
+#
+## %%
+#X = X[np.isin(clusters, top2)]
+#clusters = [cluster for cluster in clusters if cluster in top2]
+#
+## %%
+#df_x = pd.DataFrame(X, columns = feature_columns)
+#
+#
+## %%
+#fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(15, 10))
+#axs = axs.flatten()
+#sns.scatterplot(data=df_x, x='Jphi', y='Etot', hue=clusters, style=clusters, s=10, ax=axs[0])
+#sns.scatterplot(data=df_x, x='vr', y='vphi', hue=clusters, style=clusters, s=10, ax=axs[1])
+#sns.scatterplot(data=df_x, x='vr', y='W', hue=clusters, style=clusters, s=10, ax=axs[2])
+#J = np.sqrt(X[:,3]**2 + X[:,2]**2 + X[:,1]**2)
+#sns.scatterplot(x=X[:,3]/J, y=(X[:,2]-X[:,1])/J, hue=clusters, style=clusters, s=10, ax=axs[3])
+#sns.scatterplot(data=df_x, x='JR', y='Jphi', hue=clusters, style=clusters, s=10, ax=axs[4])
+#sns.scatterplot(data=df_x, x='JR', y='Jz', hue=clusters, style=clusters, s=10, ax=axs[5])
+#fig.savefig('../../gaia_full_snc.png')
+#
+## %%
+#fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(15, 10))
+#axs = axs.flatten()
+#sns.scatterplot(data=df_x, x='Jphi', y='Etot', hue=clusters, style=clusters, s=10, ax=axs[0])
+#J = np.sqrt(X[:,3]**2 + X[:,2]**2 + X[:,1]**2)
+#sns.scatterplot(x=X[:,3]/J, y=(X[:,2]-X[:,1])/J, hue=clusters, style=clusters, s=10, ax=axs[3])
+#sns.scatterplot(data=df_x, x='JR', y='Jphi', hue=clusters, style=clusters, s=10, ax=axs[4])
+#sns.scatterplot(data=df_x, x='JR', y='Jz', hue=clusters, style=clusters, s=10, ax=axs[5])
+#fig.savefig('../../gaia_full_snc.png')
+#
+## %%
+#sns.scatterplot(x=X[:,9], y=X[:,10], hue=clusters, style=clusters, s=10)
+#
+## %%
+#J = np.sqrt(X[:,3]**2 + X[:,2]**2 + X[:,1]**2)
+#ax = sns.scatterplot(x=X[:,3]/J, y=(X[:,2]-X[:,1])/J, hue=clusters, style=clusters, s=10)
+#
+## %%
+#ax = sns.scatterplot(x=X[:,1], y=X[:,2], hue=clusters, style=clusters, s=10)
+#ax.set(xlim=[0,20000])
+#
+## %%
+#ax = sns.scatterplot(x=X[:,4], y=X[:,12], hue=clusters, style=clusters, s=10)
+#
+## %%
+#POS = [X[:,4]*torch.cos(X[:,11]),X[:,4]*torch.sin(X[:,11]),X[:,12]]
+#ax = sns.scatterplot(x=POS[0], y=POS[1], hue=clusters, style=clusters, s=10)
+#
+## %%
+#ax = sns.scatterplot(x=X[:,11], y=X[:,4], hue=clusters, style=clusters, s=10)
+#
+## %%
+#
+#
+## %%
+#
+#
+## %%
 
 
 
