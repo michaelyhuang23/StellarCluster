@@ -57,10 +57,10 @@ for i, graph in enumerate(gaia_loader):
 
 # sparsify t_adj
 keep_edges = 10000000
-if len(t_adj.values) > keep_edges:
-    cutoff_val = np.percentile(t_adj.values, 100 - int(100*keep_edges/len(t_adj.values)))
-    n_edge_index = t_adj.indices[t_adj.values > cutoff_val]
-    n_edge_pred = t_adj.values[t_adj.values > cutoff_val]
+if len(t_adj.values()) > keep_edges:
+    cutoff_val = np.percentile(t_adj.values(), 100 - int(100*keep_edges/len(t_adj.values())))
+    n_edge_index = t_adj.indices()[t_adj.values() > cutoff_val]
+    n_edge_pred = t_adj.values()[t_adj.values() > cutoff_val]
     t_adj = torch.sparse_coo_tensor(n_edge_index, n_edge_pred, t_adj.shape)
 
 # perform clustering
