@@ -38,9 +38,9 @@ def evaluate(graph, model):
     with torch.no_grad():
         model.eval()
         edge_pred = model(graph)
-    edge_index = graph.sample_indices[graph.edge_index].cpu()
+    edge_index = graph.sampled_idx[graph.edge_index].cpu()
     adj = csr_matrix((edge_pred.cpu(),edge_index), shape=(graph.total_size, graph.total_size)) 
-    return adj, graph.sample_indices, graph.ids
+    return adj, graph.sampled_idx, graph.ids
 
 # %%
 t_adj = None
@@ -48,8 +48,8 @@ stellar_ids = None
 for graph in gaia_loader:
     if stellar_ids is None: 
         stellar_ids = np.zeros((graph.total_size), dtype=np.int64)
-    adj, sample_indices, ids = evaluate(graph, model)
-    stellar_ids[sample_indices] = ids
+    adj, sampled_idx, ids = evaluate(graph, model)
+    stellar_ids[sampled_idx] = ids
     if t_adj is None:
         t_adj = adj
     else:
