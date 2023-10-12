@@ -1,27 +1,6 @@
 /home/gridsan/yhuang1/StellarCluster
-/var/spool/slurmd/job24008231/slurm_script: line 10: module: command not found
-/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py:248: UserWarning: Array is not symmetric, and will be converted to symmetric by average with its transpose.
-  adjacency = check_symmetric(adjacency)
-/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py:274: UserWarning: Graph is not fully connected, spectral embedding may not work as expected.
-  warnings.warn(
-Not enough memory to perform factorization.
+/var/spool/slurmd/job24010423/slurm_script: line 10: module: command not found
 Traceback (most recent call last):
   File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_stitch_snc.py", line 60, in <module>
-    FX = C_Spectral(t_adj, n_components=n_components)
-  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/../../tools/cluster_functions.py", line 21, in C_Spectral
-    clusterer.fit(adj)
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/cluster/_spectral.py", line 750, in fit
-    self.labels_ = spectral_clustering(
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/cluster/_spectral.py", line 371, in spectral_clustering
-    maps = spectral_embedding(
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py", line 314, in spectral_embedding
-    _, diffusion_map = eigsh(
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/scipy/sparse/linalg/_eigen/arpack/arpack.py", line 1643, in eigsh
-    Minv_matvec = get_OPinv_matvec(A, M, sigma,
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/scipy/sparse/linalg/_eigen/arpack/arpack.py", line 1072, in get_OPinv_matvec
-    return SpLuInv(A).matvec
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/scipy/sparse/linalg/_eigen/arpack/arpack.py", line 912, in __init__
-    self.M_lu = splu(M)
-  File "/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py", line 366, in splu
-    return _superlu.gstrf(N, A.nnz, A.data, A.indices, A.indptr,
-MemoryError
+    if len(t_adj.values) > keep_edges:
+TypeError: object of type 'builtin_function_or_method' has no len()
