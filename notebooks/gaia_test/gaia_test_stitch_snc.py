@@ -39,13 +39,13 @@ def evaluate(graph, model):
         model.eval()
         edge_pred = model(graph)
     edge_index = graph.sampled_idx[graph.edge_index].cpu()
-    adj = csr_matrix((edge_pred.cpu(),edge_index), shape=(graph.total_size, graph.total_size)) 
+    adj = torch.sparse_coo_tensor(edge_index, edge_pred.cpu(), (graph.total_size, graph.total_size)) 
     return adj, graph.sampled_idx.cpu().numpy(), graph.ids.cpu().numpy()
 
 # %%
 t_adj = None
 stellar_ids = None
-for graph in gaia_loader:
+for i, graph in enumerate(gaia_loader):
     if stellar_ids is None: 
         stellar_ids = np.zeros((graph.total_size), dtype=np.int64)
     adj, sampled_idx, ids = evaluate(graph, model)
@@ -53,7 +53,15 @@ for graph in gaia_loader:
     if t_adj is None:
         t_adj = adj
     else:
-        t_adj = t_adj + adj
+        t_adj = t_adj*i/(i+1) + adj/(i+1) 
+
+# sparsify t_adj
+keep_edges = 10000000
+if len(t_adj.values) > keep_edges:
+    cutoff_val = np.percentile(t_adj.values, 100 - int(100*keep_edges/len(t_adj.values)))
+    n_edge_index = t_adj.indices[t_adj.values > cutoff_val]
+    n_edge_pred = t_adj.values[t_adj.values > cutoff_val]
+    t_adj = torch.sparse_coo_tensor(n_edge_index, n_edge_pred, t_adj.shape)
 
 # perform clustering
 n_components = 5
