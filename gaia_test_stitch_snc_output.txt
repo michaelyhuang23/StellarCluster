@@ -1,6 +1,6 @@
 /home/gridsan/yhuang1/StellarCluster
-/var/spool/slurmd/job24010423/slurm_script: line 10: module: command not found
-Traceback (most recent call last):
-  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_stitch_snc.py", line 60, in <module>
-    if len(t_adj.values) > keep_edges:
-TypeError: object of type 'builtin_function_or_method' has no len()
+/var/spool/slurmd/job24011855/slurm_script: line 10: module: command not found
+/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py:248: UserWarning: Array is not symmetric, and will be converted to symmetric by average with its transpose.
+  adjacency = check_symmetric(adjacency)
+/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py:274: UserWarning: Graph is not fully connected, spectral embedding may not work as expected.
+  warnings.warn(

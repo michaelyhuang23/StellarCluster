@@ -54,18 +54,23 @@ for i, graph in enumerate(gaia_loader):
         t_adj = adj
     else:
         t_adj = t_adj*i/(i+1) + adj/(i+1) 
+t_adj = t_adj.coalesce()
+
+t_edge_index = t_adj.indices()
+t_edge_pred = t_adj.values()
 
 # sparsify t_adj
 keep_edges = 10000000
 if len(t_adj.values()) > keep_edges:
     cutoff_val = np.percentile(t_adj.values(), 100 - int(100*keep_edges/len(t_adj.values())))
-    n_edge_index = t_adj.indices()[t_adj.values() > cutoff_val]
-    n_edge_pred = t_adj.values()[t_adj.values() > cutoff_val]
-    t_adj = torch.sparse_coo_tensor(n_edge_index, n_edge_pred, t_adj.shape)
+    t_edge_index = t_adj.indices()[:, t_adj.values() > cutoff_val]
+    t_edge_pred = t_adj.values()[t_adj.values() > cutoff_val]
+
+adj = csr_matrix((t_edge_pred, t_edge_index), shape=t_adj.shape)
 
 # perform clustering
 n_components = 5
-FX = C_Spectral(t_adj, n_components=n_components)
+FX = C_Spectral(adj, n_components=n_components)
 
 
 labels = pd.DataFrame(FX, columns=['cluster_id'])
