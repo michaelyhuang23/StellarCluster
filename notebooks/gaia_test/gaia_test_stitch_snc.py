@@ -73,6 +73,7 @@ adj = csr_matrix((t_edge_pred, t_edge_index), shape=t_adj.shape)
 # %%
 
 print('performing clustering')
+print(f'adj shape: {adj.shape}')
 # perform clustering
 n_components = 5
 FX = C_Spectral(adj, n_components=n_components)
@@ -81,6 +82,8 @@ FX = C_Spectral(adj, n_components=n_components)
 labels = pd.DataFrame(FX, columns=['cluster_id'])
 labels['source_id'] = stellar_ids
 labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom.csv', index=False)
+
+print('done')
 
 #
 ## %%
