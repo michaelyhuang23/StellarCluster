@@ -24,7 +24,8 @@ position_columns = ['XGC', 'YGC', 'ZGC']
 
 # %%
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True, loop=False), T.GDC(normalization_out='sym', self_loop_weight=None, sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) 
-gaia_dataset = SampleGaiaDataset('../../data/gaia', feature_columns, sample_size=3000, num_samples=100, pre_transform=data_transforms)
+gaia_dataset = SampleGaiaDataset('../../data/gaia', feature_columns, sample_size=3000, num_samples=1000, pre_transform=data_transforms) 
+# num_samples need to be at least as big as (total_size / sample_size)**2. Which is around 625 in this case.
 gaia_loader = DataLoader(gaia_dataset, batch_size=1, shuffle=True)
 
 # %%
