@@ -44,6 +44,7 @@ def evaluate(graph, model):
     return adj, graph.sampled_idx.cpu().numpy(), graph.ids.cpu().numpy()
 
 # %%
+print('computing adjacency matrix')
 t_adj = None
 stellar_ids = None
 for i, graph in enumerate(gaia_loader):
@@ -70,6 +71,8 @@ if len(t_adj.values()) > keep_edges:
 adj = csr_matrix((t_edge_pred, t_edge_index), shape=t_adj.shape)
 
 # %%
+
+print('performing clustering')
 # perform clustering
 n_components = 5
 FX = C_Spectral(adj, n_components=n_components)
