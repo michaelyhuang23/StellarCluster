@@ -68,6 +68,8 @@ if len(t_adj.values()) > keep_edges:
     t_edge_index = t_adj.indices()[:, t_adj.values() > cutoff_val]
     t_edge_pred = t_adj.values()[t_adj.values() > cutoff_val]
 
+print(f'number of edges: {len(t_edge_index[0])}')
+
 adj = csr_matrix((t_edge_pred, t_edge_index), shape=t_adj.shape)
 
 # %%
