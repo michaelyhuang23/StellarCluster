@@ -64,9 +64,9 @@ t_edge_pred = t_adj.values()
 # sparsify t_adj
 keep_edges = 10000000
 if len(t_adj.values()) > keep_edges:
-    cutoff_val = np.percentile(t_adj.values(), 100 - int(100*keep_edges/len(t_adj.values())))
-    t_edge_index = t_adj.indices()[:, t_adj.values() > cutoff_val]
-    t_edge_pred = t_adj.values()[t_adj.values() > cutoff_val]
+    keep_edge_idx = np.random.choice(len(t_adj.values()), keep_edges, replace=False)
+    t_edge_index = t_adj.indices()[:, keep_edge_idx]
+    t_edge_pred = t_adj.values()[keep_edge_idx]
 
 print(f'number of edges: {len(t_edge_index[0])}')
 
@@ -83,7 +83,7 @@ FX = C_Spectral(adj, n_components=n_components)
 
 labels = pd.DataFrame(FX, columns=['cluster_id'])
 labels['source_id'] = stellar_ids
-labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom.csv', index=False)
+labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom_random_sparsification.csv', index=False)
 
 print('done')
 
