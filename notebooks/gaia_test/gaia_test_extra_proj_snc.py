@@ -50,6 +50,7 @@ for i, graph in enumerate(gaia_dataset):
 def train_projector(dataset, edge_preds, n_components=5, EPOCHS=100):
     projector = FeedForwardProjector(len(feature_columns), [32], n_components=n_components, regularizer=0).to(device)
     optimizer = Adam(projector.parameters(), lr=0.001)
+
     projector.train()
     for epoch in range(EPOCHS):
         mean_loss = 0
