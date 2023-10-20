@@ -210,6 +210,8 @@ class FeedForwardProjector(nn.Module):
 
     def edge_pred_loss(self, edge_index, edge_pred, FX):
         FX = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
+        print(FX)
+        print(edge_pred)
         return F.cross_entropy(FX, edge_pred)
 
     def edge_pred_acc(self, edge_index, edge_pred, FX):
