@@ -83,7 +83,7 @@ FX = C_Spectral(adj, n_components=n_components)
 
 labels = pd.DataFrame(FX, columns=['cluster_id'])
 labels['source_id'] = stellar_ids
-labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom_random_sparsification.csv', index=False)
+labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom_random_sparsification_3000.csv', index=False)
 
 print('done')
 
