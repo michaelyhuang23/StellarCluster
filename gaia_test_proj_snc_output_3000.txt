@@ -1,9 +1,2 @@
 computing new graph
-Traceback (most recent call last):
-  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_extra_proj_snc.py", line 72, in <module>
-    projector = train_projector(gaia_dataset, edge_preds, n_components=5, EPOCHS=100)
-  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/gaia_test_extra_proj_snc.py", line 61, in train_projector
-    acc = projector.edge_pred_acc(graph.edge_index, edge_pred, FX)
-  File "/home/gridsan/yhuang1/StellarCluster/notebooks/gaia_test/../../tools/gnn_models.py", line 217, in edge_pred_acc
-    return torch.mean((FX>0.5 == edge_pred>0.5).float())
-RuntimeError: Boolean value of Tensor with more than one value is ambiguous
+done
