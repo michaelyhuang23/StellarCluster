@@ -26,8 +26,6 @@ position_columns = ['XGC', 'YGC', 'ZGC']
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True, loop=False), T.GDC(normalization_out='sym', self_loop_weight=None, sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) 
 gaia_dataset = SampleGaiaDataset('../../data/gaia', feature_columns, sample_size=2000, num_samples=40, pre_transform=data_transforms) 
 # num_samples need to be at least as big as (total_size / sample_size)**2. Which is around 625 in this case.
-gaia_loader = DataLoader(gaia_dataset, batch_size=1, shuffle=True)
-
 # %%
 model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
 model.load_state_dict(torch.load('../../train_script/weights/GANOrigEdgeBased_model300new_gaia_mom/299.pth', map_location=device)['model_state_dict'])
@@ -39,43 +37,30 @@ def evaluate(graph, model):
     with torch.no_grad():
         model.eval()
         edge_pred = model(graph)
-    edge_index = graph.sampled_idx[graph.edge_index].cpu()
-    adj = torch.sparse_coo_tensor(edge_index, edge_pred.cpu(), (graph.total_size, graph.total_size)) 
-    return adj, graph.sampled_idx.cpu().numpy(), graph.ids.cpu().numpy()
+    return edge_pred 
 
 # %%
-print('computing adjacency matrix')
-t_adj = None
-stellar_ids = None
-for i, graph in enumerate(gaia_loader):
-    if stellar_ids is None: 
-        stellar_ids = np.zeros((graph.total_size), dtype=np.int64)
-    adj, sampled_idx, ids = evaluate(graph, model)
-    stellar_ids[sampled_idx] = ids
-    if t_adj is None:
-        t_adj = adj
-    else:
-        t_adj = t_adj*i/(i+1) + adj/(i+1) 
-t_adj = t_adj.coalesce()
-
-t_edge_index = t_adj.indices()
-t_edge_pred = t_adj.values()
-
+print('computing new graph')
+edge_preds = []
+for i, graph in enumerate(gaia_dataset):
+    edge_pred = evaluate(graph, model)
+    edge_preds.append(edge_pred)
 
 # %%
-def train_projector(edge_index, edge_pred, n_components=5, EPOCHS=100):
+def train_projector(dataset, edge_preds, n_components=5, EPOCHS=100):
     projector = FeedForwardProjector(len(feature_columns), [64, 64], n_components=n_components).to(device)
     optimizer = Adam(projector.parameters(), lr=0.001)
     projector.train()
     for epoch in range(EPOCHS):
-        for graph in gaia_loader:
+        for i, graph in enumerate(dataset):
             optimizer.zero_grad()
             graph = graph.to(device)
             FX = projector(graph.x)
-            loss = projector.edge_pred_loss(edge_index, edge_pred, FX)
-            acc = projector.edge_pred_acc(edge_index, edge_pred, FX)
-            writer.add_scalar('Proj/Loss', loss.item(), epoch*len(gaia_loader)+i)
-            writer.add_scalar('Proj/EdgeAcc', acc.item(), epoch*len(gaia_loader)+i)
+            edge_pred = edge_preds[i].to(device)
+            loss = projector.edge_pred_loss(graph.edge_index, edge_pred, FX)
+            acc = projector.edge_pred_acc(graph.edge_index, edge_pred, FX)
+            writer.add_scalar('Proj/Loss', loss.item(), epoch*len(gaia_dataset)+i)
+            writer.add_scalar('Proj/EdgeAcc', acc.item(), epoch*len(gaia_dataset)+i)
             loss.backward()
             optimizer.step()
     return projector
@@ -84,7 +69,7 @@ def train_projector(edge_index, edge_pred, n_components=5, EPOCHS=100):
 # %%
 import os
 
-projector = train_projector(t_edge_index, t_edge_pred, n_components=5, EPOCHS=100)
+projector = train_projector(gaia_dataset, edge_preds, n_components=5, EPOCHS=100)
 
 data_root = '../../data/gaia/raw/'
 results_root = '../../results/cluster_files/'
