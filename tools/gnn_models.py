@@ -214,6 +214,6 @@ class FeedForwardProjector(nn.Module):
 
     def edge_pred_acc(self, edge_index, edge_pred, FX):
         FX = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
-        return torch.mean((FX>0.5 == edge_pred>0.5).float())
+        return torch.mean(((FX>0.5) == (edge_pred>0.5)).float())
 
 
