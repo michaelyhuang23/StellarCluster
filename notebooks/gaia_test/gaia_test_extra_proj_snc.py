@@ -48,11 +48,12 @@ for i, graph in enumerate(gaia_dataset):
 
 # %%
 def train_projector(dataset, edge_preds, n_components=5, EPOCHS=100):
-    projector = FeedForwardProjector(len(feature_columns), [64, 64], n_components=n_components).to(device)
+    projector = FeedForwardProjector(len(feature_columns), [32], n_components=n_components, regularizer=0).to(device)
     optimizer = Adam(projector.parameters(), lr=0.001)
     projector.train()
     for epoch in range(EPOCHS):
         mean_loss = 0
+        mean_acc = 0
         for i, graph in enumerate(dataset):
             optimizer.zero_grad()
             graph = graph.to(device)
@@ -60,20 +61,23 @@ def train_projector(dataset, edge_preds, n_components=5, EPOCHS=100):
             edge_pred = edge_preds[i].to(device)
             loss = projector.edge_pred_loss(graph.edge_index, edge_pred, FX)
             acc = projector.edge_pred_acc(graph.edge_index, edge_pred, FX)
-            writer.add_scalar('Proj/Loss', loss.item(), epoch*len(gaia_dataset)+i)
-            writer.add_scalar('Proj/EdgeAcc', acc.item(), epoch*len(gaia_dataset)+i)
             loss.backward()
             optimizer.step()
             mean_loss += loss.item()
+            mean_acc += acc.item()
+            writer.add_scalar('Proj/Loss', loss.item(), epoch*len(gaia_dataset)+i)
+            writer.add_scalar('Proj/EdgeAcc', acc.item(), epoch*len(gaia_dataset)+i)
         mean_loss /= len(dataset)
+        mean_acc /= len(dataset)
         print(f'Epoch {epoch}: loss {mean_loss}')
+        print(f'Epoch {epoch}: acc {mean_acc}')
     return projector
 
 
 # %%
 import os
 
-projector = train_projector(gaia_dataset, edge_preds, n_components=5, EPOCHS=100)
+projector = train_projector(gaia_dataset, edge_preds, n_components=5, EPOCHS=1000)
 
 data_root = '../../data/gaia/raw/'
 results_root = '../../results/cluster_files/'

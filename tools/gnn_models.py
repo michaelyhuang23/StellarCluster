@@ -191,11 +191,12 @@ class GCNEdge2Cluster_modularity(nn.Module):
 
 
 class FeedForwardProjector(nn.Module):
-    def __init__(self, input_size, hidden_sizes, n_components=5):
+    def __init__(self, input_size, hidden_sizes, n_components=5, regularizer=0.1):
         super().__init__()
         self.input_size = input_size
         self.n_components = n_components
         self.layers = nn.ModuleList()
+        self.regularizer = regularizer
         for hidden_size in hidden_sizes:
             self.layers.append(nn.Linear(input_size, hidden_size))
             self.layers.append(nn.ReLU())
@@ -209,10 +210,8 @@ class FeedForwardProjector(nn.Module):
         return X
 
     def edge_pred_loss(self, edge_index, edge_pred, FX):
-        FX = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
-        print(FX)
-        print(edge_pred)
-        return F.cross_entropy(FX, edge_pred)
+        f_edge = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
+        return F.binary_cross_entropy(f_edge, edge_pred, reduction='mean') + self.regularizer * torch.mean(torch.norm(FX, p=2, dim=-1), dim=0)
 
     def edge_pred_acc(self, edge_index, edge_pred, FX):
         FX = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
