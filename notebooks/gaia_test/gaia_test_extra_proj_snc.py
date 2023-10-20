@@ -52,6 +52,7 @@ def train_projector(dataset, edge_preds, n_components=5, EPOCHS=100):
     optimizer = Adam(projector.parameters(), lr=0.001)
     projector.train()
     for epoch in range(EPOCHS):
+        mean_loss = 0
         for i, graph in enumerate(dataset):
             optimizer.zero_grad()
             graph = graph.to(device)
@@ -63,6 +64,9 @@ def train_projector(dataset, edge_preds, n_components=5, EPOCHS=100):
             writer.add_scalar('Proj/EdgeAcc', acc.item(), epoch*len(gaia_dataset)+i)
             loss.backward()
             optimizer.step()
+            mean_loss += loss.item()
+        mean_loss /= len(dataset)
+        print(f'Epoch {epoch}: loss {mean_loss}')
     return projector
 
 
