@@ -45,9 +45,9 @@ class SampleGaiaDataset(Dataset):  # Dataset enforces a very specific file struc
         raw_path = self.raw_paths[0]
         df = pd.read_hdf(os.path.join(raw_path), key='star')
         # delete this
-        #np.random.seed(0)
-        #keep_idx = np.random.choice(len(df), 3000, replace=False)
-        #df = df[keep_idx]
+        np.random.seed(0)
+        keep_idx = np.random.choice(len(df), 3000, replace=False)
+        df = df.iloc[keep_idx]
 
         self.get_normalizer()
         if 'Etot' in self.feature_columns:

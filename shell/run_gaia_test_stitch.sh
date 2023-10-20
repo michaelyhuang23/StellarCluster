@@ -5,9 +5,7 @@
 #SBATCH -o gaia_test_stitch_snc_output_random_sparsification.txt
 #SBATCH --job-name=snc
 
-pwd
 
-module load anaconda/2023a
 
 cd notebooks/gaia_test
 python gaia_test_stitch_snc.py
