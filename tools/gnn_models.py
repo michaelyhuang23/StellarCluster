@@ -188,3 +188,32 @@ class GCNEdge2Cluster_modularity(nn.Module):
         loss = self.loss(FX, edge_index, edge_attr)
         pregularize = self.regularize(FX)
         return FX, loss + self.regularizer * pregularize
+
+
+class FeedForwardProjector(nn.Module):
+    def __init__(self, input_size, hidden_sizes, n_components=5):
+        super().__init__()
+        self.input_size = input_size
+        self.n_components = n_components
+        self.layers = nn.ModuleList()
+        for hidden_size in hidden_sizes:
+            self.layers.append(nn.Linear(input_size, hidden_size))
+            self.layers.append(nn.ReLU())
+            input_size = hidden_size
+        self.layers.append(nn.Linear(input_size, n_components))
+
+    def forward(self, X):
+        for layer in self.layers:
+            X = layer(X)
+        X = F.softmax(X, dim=-1)
+        return X
+
+    def edge_pred_loss(self, edge_index, edge_pred, FX):
+        FX = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
+        return F.cross_entropy(FX, edge_pred)
+
+    def edge_pred_acc(self, edge_index, edge_pred, FX):
+        FX = torch.sum(FX[edge_index[0]] * FX[edge_index[1]], dim=-1)
+        return torch.mean((FX>0.5 == edge_pred>0.5).float())
+
+
