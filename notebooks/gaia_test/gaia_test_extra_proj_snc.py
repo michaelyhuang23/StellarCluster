@@ -90,12 +90,15 @@ data_root = '../../data/gaia/raw/'
 results_root = '../../results/cluster_files/'
 
 df = pd.read_hdf(os.path.join(data_root, 'common_kinematics_10kpc.h5'), key='star')
+np.random.seed(0)
+keep_idx = np.random.choice(len(df), 3000, replace=False)
+df = df.iloc[keep_idx]
 features = torch.tensor(df[feature_columns].to_numpy()).float()
 
 FX = projector(features.to(device)).cpu().detach().numpy()
 cluster_labels = np.argmax(FX, axis=1)
 
 labels = pd.DataFrame(cluster_labels, columns=['cluster_id'])
-labels.to_csv(os.path.join(results_root, 'gaia_projection_snc_mom.csv'), index=False)
+labels.to_csv(os.path.join(results_root, 'gaia_projection_snc_mom_3000.csv'), index=False)
 
 print('done')
