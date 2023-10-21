@@ -1,9 +1,1 @@
-Processing...
-Done!
-/state/partition1/llgrid/pkg/anaconda/anaconda3-2023a-pytorch/lib/python3.9/site-packages/sklearn/manifold/_spectral_embedding.py:248: UserWarning: Array is not symmetric, and will be converted to symmetric by average with its transpose.
-  adjacency = check_symmetric(adjacency)
-computing adjacency matrix
-number of edges: 1460344
-performing clustering
-adj shape: (3000, 3000)
-done
+slurmstepd-d-8-3-2: error: *** JOB 24054519 ON d-8-3-2 CANCELLED AT 2023-10-20T02:15:49 ***
