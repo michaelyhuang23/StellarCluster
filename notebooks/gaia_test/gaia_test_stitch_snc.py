@@ -15,22 +15,25 @@ from tools.gnn_models import GCNEdgeBased
 from tools.evaluation_metric import *
 from tools.cluster_functions import *
 
+import gc
+import psutil
+
 # %%
 writer = SummaryWriter()
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-feature_columns = ['Etot', 'JR', 'Jz', 'Jphi'] #, 'Vtot','W', 'vr', 'vphi'] #, 'RGC', 'Vtot', 'U', 'V', 'W', 'vr', 'vphi', 'PhiGC', 'ZGC']
+feature_columns = ['Etot', 'JR', 'Jz', 'Jphi', 'Vtot','W', 'vr', 'vphi'] #, 'RGC', 'Vtot', 'U', 'V', 'W', 'vr', 'vphi', 'PhiGC', 'ZGC']
 position_columns = ['XGC', 'YGC', 'ZGC']
 
 # %%
 data_transforms = T.Compose(transforms=[T.KNNGraph(k=300, force_undirected=True, loop=False), T.GDC(normalization_out='sym', self_loop_weight=None, sparsification_kwargs={'avg_degree':300, 'method':'threshold'})]) 
-gaia_dataset = SampleGaiaDataset('../../data/gaia', feature_columns, sample_size=3000, num_samples=1000, pre_transform=data_transforms) 
+gaia_dataset = SampleGaiaDataset('../../data/gaia', feature_columns, sample_size=3000, num_samples=625, pre_transform=data_transforms) 
 # num_samples need to be at least as big as (total_size / sample_size)**2. Which is around 625 in this case.
 gaia_loader = DataLoader(gaia_dataset, batch_size=1, shuffle=True)
 
 # %%
 model = GANOrigEdgeBased(len(feature_columns), regularizer=0).to(device)
-model.load_state_dict(torch.load('../../train_script/weights/GANOrigEdgeBased_model300new_gaia_mom/299.pth', map_location=device)['model_state_dict'])
+model.load_state_dict(torch.load('../../train_script/weights/GANOrigEdgeBased_model300new_gaia_mom_vel/299.pth', map_location=device)['model_state_dict'])
 
 # %%
 from scipy.sparse import csr_matrix
@@ -60,18 +63,30 @@ t_adj = t_adj.coalesce()
 
 t_edge_index = t_adj.indices()
 t_edge_pred = t_adj.values()
+tensor_shape = t_adj.shape
+
+print(f'memory usage: {psutil.Process().memory_info().rss / 1024**3} Gb')
+
+del t_adj
+del model
+del gaia_dataset
+del gaia_loader
+gc.collect()
+
+print(f'memory usage: {psutil.Process().memory_info().rss / 1024**3} Gb')
 
 # sparsify t_adj
-keep_edges = 10000000
-if len(t_adj.values()) > keep_edges:
-    keep_edge_idx = np.random.choice(len(t_adj.values()), keep_edges, replace=False)
-    t_edge_index = t_adj.indices()[:, keep_edge_idx]
-    t_edge_pred = t_adj.values()[keep_edge_idx]
+keep_edges = 1000000
+if len(t_edge_pred) > keep_edges:
+    keep_edge_idx = np.random.choice(len(t_edge_pred), keep_edges, replace=False)
+    t_edge_index = t_edge_index[:, keep_edge_idx]
+    t_edge_pred = t_edge_pred[keep_edge_idx]
 
 print(f'number of edges: {len(t_edge_index[0])}')
 
-adj = csr_matrix((t_edge_pred, t_edge_index), shape=t_adj.shape)
+adj = csr_matrix((t_edge_pred, t_edge_index), shape=tensor_shape)
 
+print(f'memory usage: {psutil.Process().memory_info().rss / 1024**3} Gb')
 # %%
 
 print('performing clustering')
@@ -83,7 +98,7 @@ FX = C_Spectral(adj, n_components=n_components)
 
 labels = pd.DataFrame(FX, columns=['cluster_id'])
 labels['source_id'] = stellar_ids
-labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom_random_sparsification.csv', index=False)
+labels.to_csv('../../results/cluster_files/gaia_stitch_snc_mom_vel_random_sparsification_1e6.csv', index=False)
 
 print('done')
 
